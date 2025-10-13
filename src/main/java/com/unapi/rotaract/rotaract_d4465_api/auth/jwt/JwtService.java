@@ -1,4 +1,4 @@
-package com.unapi.rotaract.rotaract_d4465_api.auth.service;
+package com.unapi.rotaract.rotaract_d4465_api.auth.jwt;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
@@ -16,7 +16,6 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.SimpleTimeZone;
 
 @Service
 @RequiredArgsConstructor
