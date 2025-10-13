@@ -3,7 +3,9 @@ package com.unapi.rotaract.rotaract_d4465_api.auth.jwt;
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,7 +28,13 @@ public class JwtService {
     @Value("${jwt.refresh-expiration}")
     private Long refreshExpiration;
 
-    private final Key key = Keys.hmacShaKeyFor(secret.getBytes());
+    private Key key;
+
+    // Inicializa la clave solo después de que Spring inyecta 'secret'
+    @PostConstruct
+    public void init() {
+        this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+    }
 
 
     public String generateToken(final UsuarioEntity usuarioEntity){
