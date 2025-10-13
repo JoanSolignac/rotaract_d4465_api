@@ -14,7 +14,7 @@ public class DatatInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-
+        inicializarRoles();
     }
 
     private void inicializarRoles() {
