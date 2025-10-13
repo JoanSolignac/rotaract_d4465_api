@@ -1,20 +1,16 @@
 package com.unapi.rotaract.rotaract_d4465_api.auth.jwt;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
-import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -32,7 +28,6 @@ public class JwtService {
 
     private final Key key = Keys.hmacShaKeyFor(secret.getBytes());
 
-    private final UsuarioRepository usuarioRepository;
 
     public String generateToken(final UsuarioEntity usuarioEntity){
         return buildToken(usuarioEntity, expiration);

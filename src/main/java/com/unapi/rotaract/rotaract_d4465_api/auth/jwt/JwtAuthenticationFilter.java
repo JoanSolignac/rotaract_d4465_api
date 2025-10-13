@@ -1,6 +1,5 @@
 package com.unapi.rotaract.rotaract_d4465_api.auth.jwt;
 
-import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -75,7 +74,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        UsuarioEntity usuario = userOpt.get();
+        var usuario = userOpt.get();
+        if (!usuario.getActivo()) {
+            returnUnauthorized(response, "User inactive");
+            return;
+        }
 
         // Validar el token (firma, expiración y coincidencia de usuario)
         boolean valid = jwtService.validateToken(jwtToken,
