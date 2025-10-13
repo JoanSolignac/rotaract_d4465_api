@@ -5,7 +5,9 @@ import org.springframework.stereotype.Repository;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.RolEntity;
 
+import java.util.Optional;
+
 @Repository
 public interface RolRepository extends JpaRepository<RolEntity, Long> {
-
+        Optional<RolEntity> findByNombre(String rolCode);
 }
