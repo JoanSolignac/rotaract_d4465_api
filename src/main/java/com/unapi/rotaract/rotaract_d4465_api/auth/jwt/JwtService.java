@@ -34,25 +34,25 @@ public class JwtService {
 
     private final UsuarioRepository usuarioRepository;
 
-    public String generateToken(String username){
+    public String generateToken(final UsuarioEntity usuarioEntity){
+        return buildToken(usuarioEntity, expiration);
+    }
 
-        // Implementación para generar un token JWT
-        UsuarioEntity usuarioEntity = usuarioRepository.findByCorreo(username).orElseThrow(
-                () -> new UsernameNotFoundException("Usuario no encontrado con el correo: " + username)
-        );
+    public String generateRefreshToken(final UsuarioEntity userEntity){
+        return buildToken(userEntity, refreshExpiration);
+    }
 
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("rol", usuarioEntity.getRol().getNombre());
-
+    private String buildToken(UsuarioEntity usuarioEntity, final Long tokenExpiration) {
         return Jwts
                 .builder()
                 .setSubject(usuarioEntity.getCorreo())
-                .setClaims(claims)
+                .setClaims(Map.of("rol", usuarioEntity.getRol().getNombre()))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(key, SignatureAlgorithm.HS256)
+                .setExpiration(new Date(System.currentTimeMillis() + tokenExpiration))
+                .signWith(key)
                 .compact();
     }
+
 
     public Claims extractAllClaims(String token) {
         return Jwts
