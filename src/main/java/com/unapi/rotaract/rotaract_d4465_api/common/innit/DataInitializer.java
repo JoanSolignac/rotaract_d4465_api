@@ -4,11 +4,13 @@ import com.unapi.rotaract.rotaract_d4465_api.auth.entity.RolEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.RolRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Component
 @RequiredArgsConstructor
-public class DatatInitializer implements CommandLineRunner {
+public class DataInitializer implements CommandLineRunner {
 
     private final RolRepository rolRepository;
 
@@ -32,11 +34,11 @@ public class DatatInitializer implements CommandLineRunner {
                             RolEntity nuevoRol = new RolEntity();
                             nuevoRol.setNombre(nombreRol);
                             RolEntity guardado = rolRepository.save(nuevoRol);
-                            System.out.println("✅ Rol creado: " + guardado.getNombre());
+                            System.out.println("Rol creado: " + guardado.getNombre());
                             return guardado;
                         })
         );
 
-        System.out.println("✔ Inicialización de roles completada correctamente.");
+        System.out.println("Inicialización de roles completada correctamente.");
     }
 }
