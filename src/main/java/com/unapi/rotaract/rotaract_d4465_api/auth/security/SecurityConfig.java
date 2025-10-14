@@ -38,7 +38,7 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Activa CORS
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**").permitAll() // Endpoints públicos
+                .requestMatchers("/auth/**").permitAll() // Endpoints públicos
                 .anyRequest().authenticated()                   // Todo lo demás requiere token
             )
             .sessionManagement(session ->
