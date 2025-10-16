@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.util.Date;
 
+import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
+
 @Entity
 @Table(name = "usuarios")
 @Data
@@ -44,4 +46,9 @@ public class UsuarioEntity {
     @JoinColumn(name = "rol_id", nullable = false)
     @ToString.Exclude
     private RolEntity rol;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "club_id")
+    @ToString.Exclude
+    private ClubEntity club;
 }
