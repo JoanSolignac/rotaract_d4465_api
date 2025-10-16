@@ -11,6 +11,12 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+/**
+ * Entidad JPA que representa un rol dentro del sistema.
+ *
+ * Un rol define permisos o capacidades asignables a los usuarios. Se mapea a
+ * la tabla "roles" y mantiene una relación uno-a-muchos con {@link UsuarioEntity}.
+ */
 public class RolEntity {
 
     @Id
@@ -23,7 +29,11 @@ public class RolEntity {
     @Column(length = 150)
     private String descripcion;
 
-    //Un rol puede tener varios usuarios
+    /**
+     * Lista de usuarios asociados a este rol. Se establece la relación
+     * uno-a-muchos desde el lado del rol; las operaciones en el rol se
+     * propagan a los usuarios por cascade ALL y se eliminan huérfanos.
+     */
     @OneToMany(mappedBy = "rol", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
