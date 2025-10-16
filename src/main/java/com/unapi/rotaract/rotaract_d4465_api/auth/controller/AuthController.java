@@ -10,6 +10,7 @@ import com.unapi.rotaract.rotaract_d4465_api.auth.dtos.AuthResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.auth.dtos.LoginRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.auth.dtos.RegistroRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.auth.service.AuthService;
+import com.unapi.rotaract.rotaract_d4465_api.common.dtos.ExceptionResponseDto;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,20 +30,29 @@ public class AuthController {
     private final AuthService authService;
 
     /**
-     * Realiza la autenticación de un usuario mediante sus credenciales.
+     * Inicia sesión de un usuario mediante correo y contraseña válidos.
      *
-     * Valida el cuerpo de la petición proporcionado en el objeto LoginRequestDto
-     * y delega en el servicio de autenticación la generación de la respuesta.
-     *
-     * @param loginRequestDto DTO que contiene el correo y la contraseña del usuario; debe ser válido
-     * @return ResponseEntity con un AuthResponseDto y estado HTTP 200 (OK)
+     * @param loginRequestDto DTO con las credenciales del usuario.
+     * @return tokens de acceso y refresh en caso de éxito.
      */
     @PostMapping("/login")
-    @Operation(summary = "Iniciar sesión", description = "Autentica a un usuario y devuelve tokens de acceso y refresh si las credenciales son válidas.")
+    @Operation(
+        summary = "Iniciar sesión",
+        description = "Autentica a un usuario y devuelve tokens JWT de acceso y refresh si las credenciales son válidas."
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Autenticación correcta", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthResponseDto.class))),
-        @ApiResponse(responseCode = "400", description = "Solicitud inválida: datos de entrada no válidos"),
-        @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
+        @ApiResponse(responseCode = "200", description = "Autenticación correcta",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = AuthResponseDto.class))),
+        @ApiResponse(responseCode = "400", description = "Solicitud inválida (datos no válidos)",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "401", description = "Credenciales incorrectas",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class)))
     })
     public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto)
     {
@@ -53,20 +63,27 @@ public class AuthController {
     /**
      * Registra un nuevo usuario en el sistema.
      *
-     * El controlador recibe un RegistroRequestDto validado y delega en el
-     * servicio de autenticación la creación del usuario. A continuación
-     * retorna un AuthResponseDto que contiene la información de autenticación
-     * inicial, incluidos los tokens.
-     *
-     * @param registroRequestDto DTO que contiene los datos requeridos para el registro; debe ser válido
-     * @return ResponseEntity con un AuthResponseDto y estado HTTP 200 (OK)
+     * @param registroRequestDto DTO con los datos del nuevo usuario.
+     * @return tokens de autenticación iniciales si el registro es exitoso.
      */
     @PostMapping("/register")
-    @Operation(summary = "Registrar usuario", description = "Registra un nuevo usuario y devuelve tokens de autenticación iniciales.")
+    @Operation(
+        summary = "Registrar usuario",
+        description = "Registra un nuevo usuario con el rol por defecto 'Interesado' y devuelve tokens JWT de autenticación."
+    )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Registro correcto", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthResponseDto.class))),
-        @ApiResponse(responseCode = "400", description = "Solicitud inválida: datos de entrada no válidos"),
-        @ApiResponse(responseCode = "409", description = "Usuario ya existe")
+        @ApiResponse(responseCode = "200", description = "Registro exitoso",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = AuthResponseDto.class))),
+        @ApiResponse(responseCode = "400", description = "Datos de entrada no válidos",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "409", description = "El usuario ya existe",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class)))
     })
     public ResponseEntity<AuthResponseDto> register(@Valid @RequestBody RegistroRequestDto registroRequestDto)
     {
