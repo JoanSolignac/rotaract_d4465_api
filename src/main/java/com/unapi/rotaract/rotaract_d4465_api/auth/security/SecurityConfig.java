@@ -39,7 +39,13 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Activa CORS
             .authorizeHttpRequests(auth -> auth
                 // .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/auth/**").permitAll() // Endpoints públicos
+                .requestMatchers("/auth/**", 
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/swagger-ui.html",
+                        "/swagger-resources/**",
+                        "/webjars/**"
+                        ).permitAll() // Endpoints públicos
                 .anyRequest().authenticated()                   // Todo lo demás requiere token
             )
             .sessionManagement(session ->
