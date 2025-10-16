@@ -35,6 +35,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // // Ignorar preflight CORS (OPTIONS)
         // if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
         //     response.setStatus(HttpServletResponse.SC_OK);
+        
+        /**
+         * Filtro que intercepta cada petición HTTP y realiza la autenticación
+         * basada en tokens JWT.
+         *
+         * El filtro extrae el token del encabezado Authorization (Bearer), valida
+         * su firma y expiración mediante {@link JwtService}, verifica la existencia
+         * y estado del usuario en la base de datos, y registra la
+         * {@link org.springframework.security.core.Authentication} en el
+         * {@link SecurityContextHolder} cuando procede.
+         *
+         * Rutas con prefijo "/auth" se consideran públicas y no pasan por la
+         * validación de token.
+         */
         //     return;
         // }
 
@@ -115,6 +129,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+        /**
+         * Envía una respuesta HTTP 401 con un cuerpo JSON simple que contiene
+         * el mensaje de error proporcionado y limpia el contexto de seguridad.
+         *
+         * @param response objeto HttpServletResponse para escribir la respuesta
+         * @param message mensaje de error que será incluido en la respuesta JSON
+         * @throws IOException si ocurre un error al escribir la respuesta
+         */
     private void returnUnauthorized(HttpServletResponse response, String message) throws IOException {
         SecurityContextHolder.clearContext();
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
