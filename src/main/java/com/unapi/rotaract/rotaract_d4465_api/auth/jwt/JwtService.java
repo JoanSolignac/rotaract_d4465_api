@@ -71,7 +71,7 @@ public class JwtService {
                 .builder()
                 .setSubject(usuarioEntity.getCorreo())
                 .setClaims(Map.of("id", usuarioEntity.getId(),
-                    "rol", usuarioEntity.getRol().getNombre()
+                    "rol", "ROLE_" + usuarioEntity.getRol().getNombre().toUpperCase()
                     ))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + tokenExpiration))
