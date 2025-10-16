@@ -7,5 +7,16 @@ import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 
 @Repository
 public interface ClubRepository extends JpaRepository<ClubEntity, Long> {
-
+	/**
+	 * Repositorio JPA para la entidad {@link ClubEntity}.
+	 *
+	 * Proporciona operaciones CRUD y paginación/herencias estándar a
+	 * través de la interfaz {@link JpaRepository}. Se recomienda usar este
+	 * repositorio para acceder y manipular los registros de la tabla
+	 * "clubs" desde la capa de servicio.
+	 *
+	 * Ejemplos de uso (en un servicio):
+	 *   List<ClubEntity> clubs = clubRepository.findAll();
+	 *   Optional<ClubEntity> club = clubRepository.findById(id);
+	 */
 }
