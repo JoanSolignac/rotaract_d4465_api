@@ -21,8 +21,15 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // Métodos para manejar las solicitudes de autenticación
-
+    /**
+     * Realiza la autenticación de un usuario mediante sus credenciales.
+     *
+     * Valida el cuerpo de la petición proporcionado en el objeto LoginRequestDto
+     * y delega en el servicio de autenticación la generación de la respuesta.
+     *
+     * @param loginRequestDto DTO que contiene el correo y la contraseña del usuario; debe ser válido
+     * @return ResponseEntity con un AuthResponseDto y estado HTTP 200 (OK)
+     */
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto)
     {
@@ -30,6 +37,17 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Registra un nuevo usuario en el sistema.
+     *
+     * El controlador recibe un RegistroRequestDto validado y delega en el
+     * servicio de autenticación la creación del usuario. A continuación
+     * retorna un AuthResponseDto que contiene la información de autenticación
+     * inicial, incluidos los tokens.
+     *
+     * @param registroRequestDto DTO que contiene los datos requeridos para el registro; debe ser válido
+     * @return ResponseEntity con un AuthResponseDto y estado HTTP 200 (OK)
+     */
     @PostMapping("/register")
     public ResponseEntity<AuthResponseDto> register(@Valid @RequestBody RegistroRequestDto registroRequestDto)
     {

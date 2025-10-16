@@ -27,10 +27,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-            @NonNull  HttpServletRequest request,
+            @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain)
             throws ServletException, IOException {
+
+        // // Ignorar preflight CORS (OPTIONS)
+        // if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+        //     response.setStatus(HttpServletResponse.SC_OK);
+        //     return;
+        // }
 
         // Permitir acceso a las rutas públicas (como login o registro)
         if (request.getServletPath().startsWith("/auth")) {

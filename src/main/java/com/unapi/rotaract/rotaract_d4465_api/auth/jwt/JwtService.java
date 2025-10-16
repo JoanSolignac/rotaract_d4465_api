@@ -18,7 +18,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class JwtService {
-
+    
     @Value("${jwt.secret}")
     private String secret;
 
@@ -37,14 +37,35 @@ public class JwtService {
     }
 
 
+    /**
+     * Genera un token JWT de acceso para el usuario proporcionado.
+     * Utiliza la expiración configurada en la propiedad 'jwt.expiration'.
+     *
+     * @param usuarioEntity entidad de usuario desde la que se extraen el correo y rol
+     * @return token JWT firmado (compact string)
+     */
     public String generateToken(final UsuarioEntity usuarioEntity){
         return buildToken(usuarioEntity, expiration);
     }
 
+    /**
+     * Genera un token JWT de refresh para el usuario proporcionado.
+     * Utiliza la expiración configurada en la propiedad 'jwt.refresh-expiration'.
+     *
+     * @param userEntity entidad de usuario desde la que se extraen el correo y rol
+     * @return token JWT de refresh firmado
+     */
     public String generateRefreshToken(final UsuarioEntity userEntity){
         return buildToken(userEntity, refreshExpiration);
     }
 
+    /**
+     * Construye el JWT con los claims básicos (subject = correo, claim 'rol').
+     *
+     * @param usuarioEntity entidad que contiene información del usuario
+     * @param tokenExpiration duración en milisegundos desde ahora hasta la expiración
+     * @return token JWT firmado y serializado
+     */
     private String buildToken(UsuarioEntity usuarioEntity, final Long tokenExpiration) {
         return Jwts
                 .builder()
@@ -57,6 +78,13 @@ public class JwtService {
     }
 
 
+    /**
+     * Parsea y valida el JWT usando la clave configurada y devuelve los Claims.
+     * Lanzará una excepción si el token no es válido o ha sido manipulado.
+     *
+     * @param token token JWT (compact form)
+     * @return Claims extraídos del token
+     */
     public Claims extractAllClaims(String token) {
         return Jwts
                 .parserBuilder()
@@ -66,18 +94,44 @@ public class JwtService {
                 .getBody();
     }
 
+    /**
+     * Extrae el nombre de usuario (subject) del token.
+     *
+     * @param token token JWT
+     * @return subject (correo) contenido en el token
+     */
     public String extractUsername(String token){
         return extractAllClaims(token).getSubject();
     }
 
+    /**
+     * Obtiene la fecha de expiración del token.
+     *
+     * @param token token JWT
+     * @return fecha de expiración
+     */
     public Date extractExpiration(String token){
         return extractAllClaims(token).getExpiration();
     }
 
+    /**
+     * Comprueba si el token NO ha expirado.
+     *
+     * @param token token JWT
+     * @return true si la fecha de expiración es posterior a la fecha actual
+     */
     public Boolean isNotExpired(String token){
         return extractExpiration(token).after(new Date());
     }
 
+    /**
+     * Valida que el token pertenezca al usuario (comparando usernames) y que no haya expirado.
+     * Nota: no comprueba otros claims ni roles más allá del 'subject' y expiración.
+     *
+     * @param token token JWT a validar
+     * @param userDetails información del usuario esperada
+     * @return true si el token es válido para el usuario dado
+     */
     public Boolean validateToken(String token, UserDetails userDetails){
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && isNotExpired(token));
