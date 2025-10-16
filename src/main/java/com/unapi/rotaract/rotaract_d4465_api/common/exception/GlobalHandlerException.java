@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 @Hidden
 public class GlobalHandlerException {
+
     /**
      * Manejador global de excepciones para la aplicación.
      *
@@ -24,7 +25,6 @@ public class GlobalHandlerException {
      * Las respuestas contienen la fecha del error, el código HTTP, un mensaje
      * legible y una lista de errores detallados.
      */
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionResponseDto> handleException(Exception ex, HttpServletRequest request) {
         ExceptionResponseDto body = new ExceptionResponseDto(
