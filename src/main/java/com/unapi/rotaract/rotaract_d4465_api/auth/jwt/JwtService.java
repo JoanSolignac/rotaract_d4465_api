@@ -139,4 +139,16 @@ public class JwtService {
         return (username.equals(userDetails.getUsername()) && isNotExpired(token));
     }
 
+    /**
+     * Extrae el rol del usuario contenido en el token JWT.
+     * Este método obtiene el valor del claim {@code "rol"} incluido en el JWT durante su generación.
+     * El rol se devuelve con el formato esperado por Spring Security (por ejemplo: {@code "ROLE_INVITADO"}).
+     *
+     * @param token token JWT del cual se desea obtener el rol del usuario
+     * @return el rol del usuario según el claim {@code "rol"}; o {@code null} si el claim no está presente
+     */
+    public String extractRole(String token) {
+        return extractAllClaims(token).get("rol", String.class);
+    }
+
 }
