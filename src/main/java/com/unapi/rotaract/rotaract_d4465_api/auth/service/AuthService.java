@@ -72,10 +72,10 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Rol 'INTERESADO' no encontrado en el sistema"));
 
         UsuarioEntity nuevoUsuario = UsuarioEntity.builder()
-                .nombre(registroRequestDto.nombre())
+                .nombre(registroRequestDto.nombre().toUpperCase())
                 .correo(registroRequestDto.correo())
                 .contrasena(passwordEncoder.encode(registroRequestDto.contrasena()))
-                .ciudad(registroRequestDto.ciudad())
+                .ciudad(registroRequestDto.ciudad().toUpperCase())
                 .fechaNacimiento(registroRequestDto.fechaNacimiento())
                 .activo(true)
                 .rol(rolInteresado)
