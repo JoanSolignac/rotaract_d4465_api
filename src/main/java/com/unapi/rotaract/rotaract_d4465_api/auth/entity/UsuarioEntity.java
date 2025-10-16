@@ -58,7 +58,6 @@ public class UsuarioEntity {
      */
     private Boolean activo = true;
 
-    // Relación muchos a uno con RolEntity
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "rol_id", nullable = false)
     @ToString.Exclude
@@ -70,8 +69,15 @@ public class UsuarioEntity {
      * "INTERESADO", etc.). El rol se carga en modo EAGER por defecto.
      */
 
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "club_id")
     @ToString.Exclude
     private ClubEntity club;
+
+     /**
+     * Club al que pertenece el usuario dentro de la organización Rotaract. 
+     * Esta relación muchos-a-uno establece la asociación entre un usuario y 
+     * un club específico, indicando su pertenencia institucional. 
+     */
 }
