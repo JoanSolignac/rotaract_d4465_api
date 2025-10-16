@@ -70,7 +70,9 @@ public class JwtService {
         return Jwts
                 .builder()
                 .setSubject(usuarioEntity.getCorreo())
-                .setClaims(Map.of("rol", usuarioEntity.getRol().getNombre()))
+                .setClaims(Map.of("id", usuarioEntity.getId(),
+                    "rol", usuarioEntity.getRol().getNombre()
+                    ))
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + tokenExpiration))
                 .signWith(key)
