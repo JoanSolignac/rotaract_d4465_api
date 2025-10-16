@@ -27,7 +27,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
             () -> new UsernameNotFoundException("Usuario no encontrado con el correo: " + username)
         );
 
-        List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(usuarioEntity.getRol().getNombre()));
+        List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + usuarioEntity.getRol().getNombre()));
 
         return org.springframework.security.core.userdetails.User.builder()
             .username(usuarioEntity.getCorreo())
