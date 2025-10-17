@@ -1,7 +1,7 @@
 package com.unapi.rotaract.rotaract_d4465_api.auth.dtos;
 
 import jakarta.validation.constraints.*;
-import java.sql.Date;
+import java.time.LocalDate;
 
 /**
  * DTO para el registro de nuevos usuarios en la plataforma Rotaract D4465.
@@ -30,6 +30,6 @@ public record RegistroRequestDto(
 
         @NotNull(message = "La fecha de nacimiento es obligatoria")
         @Past(message = "La fecha de nacimiento debe ser una fecha pasada")
-        Date fechaNacimiento
+        LocalDate fechaNacimiento
 
 ) {}

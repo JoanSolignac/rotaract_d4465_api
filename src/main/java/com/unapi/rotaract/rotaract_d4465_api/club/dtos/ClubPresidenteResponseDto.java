@@ -1,9 +1,10 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.dtos;
 
-import java.sql.Date;
+import java.time.LocalDate;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 
 /**
  * DTO de respuesta para la información de un club dentro del sistema Rotaract D4465.
@@ -11,7 +12,8 @@ import jakarta.validation.constraints.NotNull;
  * Proporciona los datos públicos esenciales del club, como su nombre, ubicación
  * y fecha de creación, sin exponer información sensible o interna.
  */
-public record ClubResponseDto(
+@Builder
+public record ClubPresidenteResponseDto(
 
 
     @NotNull(message = "El identificador del club no puede ser nulo")
@@ -27,6 +29,6 @@ public record ClubResponseDto(
     String ciudad,
     
     @NotNull(message = "La fecha de creación no puede ser nula")
-    Date fechaCreacion
+    LocalDate fechaCreacion
 
 ) {}

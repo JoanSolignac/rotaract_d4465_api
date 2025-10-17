@@ -101,7 +101,7 @@ public class DataInitializer implements CommandLineRunner {
         presidente.setCorreo(correoPresidente);
         presidente.setClub(club);
         presidente.setContrasena(passwordEncoder.encode("1234567890"));
-        presidente.setFechaNacimiento(Date.valueOf(LocalDate.of(1990, 1, 1)));
+        presidente.setFechaNacimiento(LocalDate.of(1995, 5, 20));
         presidente.setActivo(true);
         presidente.setRol(rolPresidente);
 

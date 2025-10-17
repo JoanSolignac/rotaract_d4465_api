@@ -1,6 +1,6 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.entity;
 
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
@@ -13,8 +13,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -51,12 +49,11 @@ public class ClubEntity {
     private String ciudad;
 
     @Builder.Default
-    @Temporal(TemporalType.TIMESTAMP)
     /**
      * Fecha y hora de creación del registro del club.
      * Se inicializa por defecto con la fecha actual.
      */
-    private Date fechaCreacion =  new Date();
+    private LocalDate fechaCreacion =  LocalDate.now();
 
     @Builder.Default
     @Column(nullable = false)

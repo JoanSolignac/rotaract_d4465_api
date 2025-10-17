@@ -2,7 +2,8 @@ package com.unapi.rotaract.rotaract_d4465_api.auth.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.Date;
+
+import java.time.LocalDate;
 
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 
@@ -36,19 +37,17 @@ public class UsuarioEntity {
     @Column(length = 100)
     private String ciudad;
 
-    @Temporal(TemporalType.DATE)
     /**
      * Fecha de nacimiento del usuario. Se almacena solo la fecha (sin hora).
      */
-    private Date fechaNacimiento;
+    private LocalDate fechaNacimiento;
 
     @Builder.Default
-    @Temporal(TemporalType.TIMESTAMP)
     /**
      * Fecha y hora de registro del usuario. Se inicializa con la fecha actual
      * por defecto.
      */
-    private Date fechaRegistro = new Date();
+    private LocalDate fechaRegistro = LocalDate.now();
 
     @Builder.Default
     @Column(nullable = false)
