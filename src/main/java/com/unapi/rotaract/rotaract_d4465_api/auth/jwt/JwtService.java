@@ -69,10 +69,10 @@ public class JwtService {
     private String buildToken(UsuarioEntity usuarioEntity, final Long tokenExpiration) {
         return Jwts
                 .builder()
-                .setSubject(usuarioEntity.getCorreo())
                 .setClaims(Map.of("id", usuarioEntity.getId(),
                     "rol", "ROLE_" + usuarioEntity.getRol().getNombre().toUpperCase()
                     ))
+                .setSubject(usuarioEntity.getCorreo())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + tokenExpiration))
                 .signWith(key)
