@@ -5,7 +5,6 @@ import lombok.*;
 
 import java.time.LocalDate;
 
-import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 
 @Entity
 @Table(name = "usuarios")
@@ -66,17 +65,5 @@ public class UsuarioEntity {
      * Rol asociado al usuario. Esta relación muchos-a-uno indica el rol
      * efectivo del usuario dentro de la plataforma (por ejemplo, "ADMIN",
      * "INTERESADO", etc.). El rol se carga en modo EAGER por defecto.
-     */
-
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "club_id")
-    @ToString.Exclude
-    private ClubEntity club;
-
-     /**
-     * Club al que pertenece el usuario dentro de la organización Rotaract. 
-     * Esta relación muchos-a-uno establece la asociación entre un usuario y 
-     * un club específico, indicando su pertenencia institucional. 
      */
 }
