@@ -9,25 +9,45 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
 import java.util.Map;
 
+/**
+ * Servicio responsable de la creación, parseo y validación de tokens JWT.
+ *
+ * Lee la configuración desde las propiedades (secret, expiration, refresh-expiration)
+ * y expone utilidades para generar tokens de acceso y refresh, extraer claims
+ * como el username (correo) o el rol, y validar la vigencia de un token.
+ */
 @Service
 @RequiredArgsConstructor
 public class JwtService {
-    
+    /**
+     * Clave secreta en Base64 para firmar y verificar JWT. Se inyecta desde
+     * la propiedad {@code jwt.secret} del archivo de configuración.
+     */
     @Value("${jwt.secret}")
     private String secret;
 
+    /**
+     * Tiempo de vida (en milisegundos) de los access tokens (propiedad {@code jwt.expiration}).
+     */
     @Value("${jwt.expiration}")
     private Long expiration;
 
+    /**
+     * Tiempo de vida (en milisegundos) de los refresh tokens (propiedad {@code jwt.refresh-expiration}).
+     */
     @Value("${jwt.refresh-expiration}")
     private Long refreshExpiration;
 
+    /**
+     * Representación en memoria de la clave derivada de {@code secret}, usada para firmar/validar JWT.
+     */
     private Key key;
 
     // Inicializa la clave solo después de que Spring inyecta 'secret'

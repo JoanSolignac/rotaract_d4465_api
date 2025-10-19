@@ -25,6 +25,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Configuración central de seguridad para la aplicación.
+ *
+ * - Desactiva CSRF (API REST sin sesiones tradicionales).
+ * - Habilita CORS con una configuración adecuada para desarrollo local.
+ * - Define la política de sesiones como stateless.
+ * - Registra el filtro JWT y el proveedor de autenticación.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
@@ -34,6 +42,14 @@ public class SecurityConfig {
     private final UserDetailServiceImpl userDetailService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    /**
+     * Configura la cadena de filtros de seguridad (endpoints públicos, política de sesiones,
+     * proveedor de autenticación y filtro JWT).
+     *
+     * @param http objeto HttpSecurity provisto por Spring Security
+     * @return instancia de {@link SecurityFilterChain}
+     * @throws Exception si ocurre un error durante la configuración
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -60,21 +76,10 @@ public class SecurityConfig {
     }
 
     /**
-     * Proporciona la configuración de seguridad principal para la aplicación.
+     * Configuración de CORS para permitir peticiones desde clientes locales
+     * (por ejemplo aplicaciones React en desarrollo).
      *
-     * Esta configuración desactiva CSRF, habilita CORS con la configuración
-     * proporcionada por {@link #corsConfigurationSource()}, configura la
-     * política de sesiones como stateless, establece el proveedor de
-     * autenticación y añade el filtro JWT antes del filtro de autenticación
-     * por nombre de usuario y contraseña.
-     *
-     * @param http objeto HttpSecurity proporcionado por Spring Security
-     * @return la cadena de filtros de seguridad construida
-     * @throws Exception si ocurre un error durante la construcción de la cadena
-     */
-
-    /**
-     * Configuración de CORS para permitir acceso desde React local.
+     * @return CorsConfigurationSource que se registra como Bean en el contexto de Spring
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -103,15 +108,12 @@ public class SecurityConfig {
     }
 
     /**
-     * Define la configuración de CORS usada por la aplicación.
+     * Proporciona un {@link AuthenticationProvider} que delega en un
+     * {@link org.springframework.security.core.userdetails.UserDetailsService}
+     * y utiliza BCrypt para verificar contraseñas.
      *
-     * Se permiten orígenes locales típicos de entornos de desarrollo (React),
-     * se habilitan los métodos HTTP habituales, se permiten todas las cabeceras
-     * y se aceptan credenciales. La configuración se aplica a todas las rutas.
-     *
-     * @return CorsConfigurationSource que se registra como bean de Spring
+     * @return AuthenticationProvider configurado
      */
-
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailService);
@@ -120,28 +122,22 @@ public class SecurityConfig {
     }
 
     /**
-     * Configura y devuelve el AuthenticationProvider que utiliza un
-     * UserDetailsService para cargar usuarios y un PasswordEncoder para validar
-     * credenciales.
+     * Expone el {@link AuthenticationManager} gestionado por Spring Security.
      *
-     * @return AuthenticationProvider configurado con DAO y encriptador BCrypt
+     * @param config configuración de autenticación proporcionada por Spring
+     * @return AuthenticationManager
+     * @throws Exception si no es posible obtener el AuthenticationManager
      */
-
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
     /**
-     * Expone el AuthenticationManager gestionado por Spring Security.
+     * Devuelve un {@link PasswordEncoder} basado en BCrypt para hashear contraseñas.
      *
-     * @param config configuración de autenticación proporcionada por Spring
-     * @return AuthenticationManager
-     * @throws Exception si no es posible obtener el AuthenticationManager
-     * 
-     * @return PasswordEncoder basado en BCrypt
+     * @return PasswordEncoder configurado con BCrypt
      */
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

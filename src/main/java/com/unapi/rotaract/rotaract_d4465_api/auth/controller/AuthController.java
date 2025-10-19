@@ -21,6 +21,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/**
+ * Controlador REST para operaciones de autenticación y registro de usuarios.
+ * Expone endpoints públicos bajo el prefijo {@code /auth}:
+ * - POST /auth/login: autentica a un usuario y devuelve tokens de acceso y refresh.
+ * - POST /auth/register: crea un nuevo usuario (rol por defecto: INTERESADO) y devuelve tokens.
+ * Ambos endpoints esperan un JSON con los datos de entrada (credenciales o datos de registro)
+ * y devuelven un {@link AuthResponseDto} en caso de éxito. Los errores se modelan con
+ * {@link com.unapi.rotaract.rotaract_d4465_api.common.dtos.ExceptionResponseDto}.
+ */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -54,7 +63,13 @@ public class AuthController {
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ExceptionResponseDto.class)))
     })
-    public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequestDto)
+    public ResponseEntity<AuthResponseDto> login(
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Credenciales de acceso del usuario",
+            required = true,
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequestDto.class))
+        )
+        @Valid @RequestBody LoginRequestDto loginRequestDto)
     {
         AuthResponseDto response = authService.login(loginRequestDto);
         return ResponseEntity.ok(response);
@@ -85,7 +100,13 @@ public class AuthController {
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ExceptionResponseDto.class)))
     })
-    public ResponseEntity<AuthResponseDto> register(@Valid @RequestBody RegistroRequestDto registroRequestDto)
+    public ResponseEntity<AuthResponseDto> register(
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Datos necesarios para registrar un nuevo usuario",
+            required = true,
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegistroRequestDto.class))
+        )
+        @Valid @RequestBody RegistroRequestDto registroRequestDto)
     {
         AuthResponseDto response = authService.register(registroRequestDto);
         return ResponseEntity.ok(response);
