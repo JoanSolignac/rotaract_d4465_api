@@ -5,9 +5,15 @@ import java.time.LocalDate;
 
 /**
  * DTO para el registro de nuevos usuarios en la plataforma Rotaract D4465.
- * 
+ *
  * El rol por defecto asignado al registrarse será "INTERESADO".
  * Incluye validaciones de formato y obligatoriedad.
+ *
+ * @param nombre Nombre completo del nuevo usuario. Se validan longitud mínima y máxima.
+ * @param correo Correo electrónico del nuevo usuario. Debe ser único y tener formato válido.
+ * @param contrasena Contraseña elegida por el usuario. Se requiere un rango de longitud seguro.
+ * @param ciudad Ciudad de residencia del usuario.
+ * @param fechaNacimiento Fecha de nacimiento. Debe ser una fecha pasada.
  */
 public record RegistroRequestDto(
 

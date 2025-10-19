@@ -6,8 +6,11 @@ import jakarta.validation.constraints.Size;
 
 /**
  * DTO para la solicitud de inicio de sesión de usuarios.
- * 
+ *
  * Permite autenticar un usuario existente en el sistema mediante su correo y contraseña.
+ *
+ * @param correo Correo electrónico del usuario que intenta iniciar sesión. Debe cumplir el formato de email y no exceder el tamaño máximo.
+ * @param contrasena Contraseña del usuario. Se valida la longitud mínima y máxima.
  */
 public record LoginRequestDto(
 
