@@ -1,16 +1,12 @@
 package com.unapi.rotaract.rotaract_d4465_api.common.innit;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.RolEntity;
-import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.RolRepository;
-import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Component
