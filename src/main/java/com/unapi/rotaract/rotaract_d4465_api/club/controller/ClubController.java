@@ -8,10 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Parameter;
 
 /**
  * Controlador REST para operaciones relacionadas con clubes.
@@ -68,5 +66,46 @@ public class ClubController {
     ) {
         Page<ClubResponseDto> clubsPage = clubService.findAll(page, size);
         return ResponseEntity.ok(clubsPage);
+    }
+
+    /**
+     * Recupera un club por su identificador.
+     *
+     * Requiere el rol {@code REPRESENTANTE DISTRITAL}. Devuelve los datos del
+     * club si existe; en caso contrario la capa de servicio lanzará una excepción
+     * que se modelará como una respuesta de error (por ejemplo 404 o 400 según el caso).
+     *
+     * @param id identificador del club (debe ser mayor que 0)
+     * @return {@link ClubResponseDto} con los datos del club solicitado
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
+    @Operation(
+        summary = "Obtener club por id",
+        description = "Devuelve los datos del club identificado por su id. Requiere rol 'REPRESENTANTE DISTRITAL'."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Club encontrado",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ClubResponseDto.class))),
+        @ApiResponse(responseCode = "400", description = "Solicitud inválida (id no válido)",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "401", description = "No autorizado",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "404", description = "Club no encontrado",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class)))
+    })
+    public ResponseEntity<ClubResponseDto> getClubById(
+            @Parameter(description = "Identificador único del club", required = true)
+            @Valid @PathVariable long id
+    ){
+        ClubResponseDto club = clubService.findById(id);
+        return ResponseEntity.ok(club);
     }
 }
