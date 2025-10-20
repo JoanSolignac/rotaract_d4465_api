@@ -33,7 +33,7 @@ public class ClubServiceImpl implements IClubService {
      *
      * @param page índice de la página a recuperar (0-based; 0 = primera página)
      * @param size número máximo de elementos por página (debe ser mayor que 0)
-     * @return {@link Page} de {@link ClubEntity} con los clubes de la página. Nunca {@code null}; puede estar vacío.
+     * @return {@link Page} de {@link ClubResponseDto} con los clubes de la página. Nunca {@code null}; puede estar vacío.
      * @throws IllegalArgumentException si {@code size} es menor o igual que 0
      */
     @Override
@@ -58,5 +58,37 @@ public class ClubServiceImpl implements IClubService {
 
         Pageable pageable =  PageRequest.of(page, size);
         return new PageImpl<>(clubList, pageable, clubList.size());
+    }
+
+    /**
+     * Recupera un club por su identificador.
+     * Este método delega en {@link ClubRepository#findById(Object)} y transforma la
+     * entidad obtenida en {@link ClubResponseDto}.
+     *
+     * @param id identificador único del club (debe ser mayor que 0)
+     * @return {@link ClubResponseDto} con los datos del club solicitado
+     * @throws IllegalArgumentException si {@code id} es negativo o cero, o si no se encuentra el club con el identificador proporcionado
+     */
+    @Override
+    public ClubResponseDto findById(long id) {
+
+        if (id <= 0) {
+            throw new IllegalArgumentException("El id debe ser mayor que 0.");
+        }
+
+        ClubEntity clubEntity = clubRepository.findById(id)
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Club con id " + id + " no encontrado.")
+                );
+
+        return ClubResponseDto
+                .builder()
+                .id(clubEntity.getId())
+                .nombre(clubEntity.getNombre())
+                .departamento(clubEntity.getDepartamento())
+                .ciudad(clubEntity.getCiudad())
+                .fechaCreacion(clubEntity.getFechaCreacion())
+                .activo(clubEntity.getActivo())
+                .build();
     }
 }

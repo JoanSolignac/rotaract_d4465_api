@@ -25,12 +25,11 @@ public interface ClubRepository extends JpaRepository<ClubEntity, Long> {
      */
     Optional<ClubEntity> findByNombre(String nombre);
 
-
     /**
      * Busca un club por su nombre exacto.
      *
      * @param id id del club a buscar
      * @return {@link Optional} que contiene el {@link ClubEntity} si existe, o vacío en caso contrario
      */
-    Optional<ClubEntity> findById(Long id);
+    Optional<ClubEntity> findById(long id);
 }
