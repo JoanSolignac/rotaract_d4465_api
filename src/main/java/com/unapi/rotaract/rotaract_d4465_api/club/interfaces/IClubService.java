@@ -1,14 +1,13 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.interfaces;
 
 import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubResponseDto;
-import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import org.springframework.data.domain.Page;
 
 /**
  * Contrato del servicio para operaciones relacionadas con clubes.
  * Esta interfaz expone operaciones de lectura con soporte de paginación. La
  * intención es que las implementaciones deleguen en un repositorio (p. ej.
- * Spring Data) y devuelvan objetos {@link Page} de {@link ClubEntity}.
+ * Spring Data) y devuelvan objetos {@link Page} con {@link ClubResponseDto}.
  *
  */
 public interface IClubService {
@@ -24,4 +23,14 @@ public interface IClubService {
      * @throws IllegalArgumentException si los parámetros son inválidos (por ejemplo, {@code size} &lt;= 0). La implementación puede elegir validar y lanzar esta excepción o normalizar los parámetros.
      */
     Page<ClubResponseDto> findAll(int page, int size);
+
+    /**
+     * Recupera un club por su identificador.
+     *
+     * @param id identificador único del club (debe ser mayor que 0)
+     * @return {@link ClubResponseDto} con los datos del club solicitado
+     * @throws IllegalArgumentException si {@code id} es negativo o cero
+     * @throws java.util.NoSuchElementException si no se encuentra un club con el id proporcionado. Las implementaciones también pueden lanzar una excepción personalizada del proyecto para modelar el caso "no encontrado".
+     */
+    ClubResponseDto findById(long id);
 }
