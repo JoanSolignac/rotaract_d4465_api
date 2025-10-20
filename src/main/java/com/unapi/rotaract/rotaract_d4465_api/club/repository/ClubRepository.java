@@ -1,8 +1,7 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.repository;
 
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import lombok.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -28,10 +27,10 @@ public interface ClubRepository extends JpaRepository<ClubEntity, Long> {
 
 
     /**
-     * Retorna una página de clubes.
+     * Busca un club por su nombre exacto.
      *
-     * @param pageable objeto de paginación
-     * @return {@link Page} que contiene el {@link ClubEntity} paginados
+     * @param id id del club a buscar
+     * @return {@link Optional} que contiene el {@link ClubEntity} si existe, o vacío en caso contrario
      */
-    Page<ClubEntity> findAllBy(Pageable pageable);
+    Optional<ClubEntity> findById(Long id);
 }
