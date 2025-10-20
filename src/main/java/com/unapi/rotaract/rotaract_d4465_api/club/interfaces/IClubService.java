@@ -1,5 +1,6 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.interfaces;
 
+import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import org.springframework.data.domain.Page;
 
@@ -19,8 +20,8 @@ public interface IClubService {
      *
      * @param page índice de la página a recuperar (0-indexado; 0 = primera página)
      * @param size número máximo de elementos por página (debe ser mayor que 0)
-     * @return {@link Page} de {@link ClubEntity} con los clubes de la página. Nunca {@code null}; puede estar vacío.
+     * @return {@link Page} de {@link ClubResponseDto} con los clubes de la página. Nunca {@code null}; puede estar vacío.
      * @throws IllegalArgumentException si los parámetros son inválidos (por ejemplo, {@code size} &lt;= 0). La implementación puede elegir validar y lanzar esta excepción o normalizar los parámetros.
      */
-    Page<ClubEntity> findAll(int page, int size);
+    Page<ClubResponseDto> findAll(int page, int size);
 }

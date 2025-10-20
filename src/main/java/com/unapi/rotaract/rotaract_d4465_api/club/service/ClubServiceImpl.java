@@ -1,13 +1,17 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.service;
 
+import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import com.unapi.rotaract.rotaract_d4465_api.club.interfaces.IClubService;
 import com.unapi.rotaract.rotaract_d4465_api.club.repository.ClubRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * Implementación de {@link IClubService} encargada de las operaciones relacionadas con clubes.
@@ -33,8 +37,26 @@ public class ClubServiceImpl implements IClubService {
      * @throws IllegalArgumentException si {@code size} es menor o igual que 0
      */
     @Override
-    public Page<ClubEntity> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return clubRepository.findAll(pageable);
+    public Page<ClubResponseDto> findAll(int page, int size) {
+
+        if (size <= 0) {
+            throw new IllegalArgumentException("El tamaño de página debe ser mayor que 0.");
+        }
+
+        List<ClubResponseDto> clubList = clubRepository.findAll(PageRequest.of(page, size))
+                .stream()
+                .map(
+                        clubEntity -> ClubResponseDto.builder()
+                                .id(clubEntity.getId())
+                                .nombre(clubEntity.getNombre())
+                                .departamento(clubEntity.getDepartamento())
+                                .ciudad(clubEntity.getCiudad())
+                                .fechaCreacion(clubEntity.getFechaCreacion())
+                                .activo(clubEntity.getActivo())
+                                .build()
+                ).toList();
+
+        Pageable pageable =  PageRequest.of(page, size);
+        return new PageImpl<>(clubList, pageable, clubList.size());
     }
 }
