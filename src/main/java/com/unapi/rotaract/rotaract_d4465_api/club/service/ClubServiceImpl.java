@@ -45,6 +45,7 @@ public class ClubServiceImpl implements IClubService {
 
         List<ClubResponseDto> clubList = clubRepository.findAll(PageRequest.of(page, size))
                 .stream()
+                .filter(c -> c.getActivo() == true)
                 .map(
                         clubEntity -> ClubResponseDto.builder()
                                 .id(clubEntity.getId())
