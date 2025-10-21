@@ -7,7 +7,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,8 +39,7 @@ public class ClubController {
      * @param size tamaño de página, por defecto 10
      * @return página con {@link ClubResponseDto} y metadatos de paginación
      */
-    @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
-    @GetMapping()
+    @GetMapping("/public/")
     @Operation(
         summary = "Listar clubes",
         description = "Devuelve una página con los clubes registrados. Requiere rol 'REPRESENTANTE DISTRITAL'."
@@ -71,15 +69,14 @@ public class ClubController {
     /**
      * Recupera un club por su identificador.
      *
-     * Requiere el rol {@code REPRESENTANTE DISTRITAL}. Devuelve los datos del
+     * Devuelve los datos del
      * club si existe; en caso contrario la capa de servicio lanzará una excepción
      * que se modelará como una respuesta de error (por ejemplo 404 o 400 según el caso).
      *
      * @param id identificador del club (debe ser mayor que 0)
      * @return {@link ClubResponseDto} con los datos del club solicitado
      */
-    @GetMapping("/{id}")
-    @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
+    @GetMapping("/public/{id}")
     @Operation(
         summary = "Obtener club por id",
         description = "Devuelve los datos del club identificado por su id. Requiere rol 'REPRESENTANTE DISTRITAL'."
