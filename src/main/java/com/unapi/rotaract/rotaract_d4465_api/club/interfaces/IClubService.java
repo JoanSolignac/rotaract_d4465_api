@@ -33,4 +33,22 @@ public interface IClubService {
      * @throws java.util.NoSuchElementException si no se encuentra un club con el id proporcionado. Las implementaciones también pueden lanzar una excepción personalizada del proyecto para modelar el caso "no encontrado".
      */
     ClubResponseDto findById(long id);
+
+    /**
+     * Crea un nuevo club a partir de los datos proporcionados en el DTO.
+     *
+     * La implementación debe validar los campos obligatorios del DTO
+     * (por ejemplo, nombre no vacío) y persistir la entidad correspondiente.
+     * Esta operación normalmente se ejecuta en una transacción.
+     *
+     *
+     * @param clubDto DTO con los datos del club a crear. No debe ser {@code null}.
+     *                Se espera que contenga los campos mínimos requeridos por la regla de negocio.
+     * @throws IllegalArgumentException si {@code clubDto} es {@code null} o contiene
+     *         valores inválidos (por ejemplo, nombre vacío, formato inválido).
+     * @throws org.springframework.dao.DataAccessException en caso de errores de persistencia subyacentes.
+     *         Las implementaciones pueden traducir errores de bajo nivel a excepciones de dominio más específicas
+     *         (por ejemplo, violaciones de unicidad).
+     */
+    void createClub(ClubResponseDto clubDto);
 }
