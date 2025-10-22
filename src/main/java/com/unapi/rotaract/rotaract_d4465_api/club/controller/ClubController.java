@@ -1,5 +1,7 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.controller;
 
+import com.unapi.rotaract.rotaract_d4465_api.auth.dtos.RegistroRequestDto;
+import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubCreateRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.service.ClubServiceImpl;
 import com.unapi.rotaract.rotaract_d4465_api.common.dtos.ExceptionResponseDto;
@@ -7,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +19,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+
+import java.util.Map;
 
 /**
  * Controlador REST para operaciones relacionadas con clubes.
@@ -104,5 +110,37 @@ public class ClubController {
     ){
         ClubResponseDto club = clubService.findById(id);
         return ResponseEntity.ok(club);
+    }
+
+    @PostMapping("/")
+    @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
+    @Operation(summary = "Crear club", description = "Crea un nuevo club. Requiere rol 'REPRESENTANTE DISTRITAL'.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Club creado exitosamente",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ClubResponseDto.class))),
+        @ApiResponse(responseCode = "400", description = "Solicitud inválida (datos del club incorrectos)",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "401", description = "No autorizado",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "403", description = "Acceso denegado (role insuficiente)",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class))),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ExceptionResponseDto.class)))
+    })
+    public ResponseEntity<?> createClub(
+            @RequestBody(
+                    description = "Datos necesarios para registrar un nuevo usuario",
+                    required = true,
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegistroRequestDto.class))
+            )
+            @Valid @org.springframework.web.bind.annotation.RequestBody ClubResponseDto clubDto
+    ){
+        ClubResponseDto createdClub = clubService.createClub(clubDto);
+        return ResponseEntity.ok(Map.of("message", "Club creado exitosamente", "club", createdClub));
     }
 }
