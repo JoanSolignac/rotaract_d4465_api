@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -91,5 +92,31 @@ public class ClubServiceImpl implements IClubService {
                 .fechaCreacion(clubEntity.getFechaCreacion())
                 .activo(clubEntity.getActivo())
                 .build();
+    }
+
+    @Override
+    public ClubResponseDto createClub(ClubResponseDto clubDto) {
+
+        ClubEntity clubEntity = clubRepository.save(
+                ClubEntity
+                        .builder()
+                        .nombre(clubDto.nombre())
+                        .departamento(clubDto.departamento())
+                        .ciudad(clubDto.ciudad())
+                        .fechaCreacion(LocalDate.now())
+                        .activo(true)
+                        .build()
+        );
+
+        return ClubResponseDto
+                .builder()
+                .id(clubEntity.getId())
+                .nombre(clubEntity.getNombre())
+                .departamento(clubEntity.getDepartamento())
+                .ciudad(clubEntity.getCiudad())
+                .fechaCreacion(clubEntity.getFechaCreacion())
+                .activo(clubEntity.getActivo())
+                .build();
+
     }
 }

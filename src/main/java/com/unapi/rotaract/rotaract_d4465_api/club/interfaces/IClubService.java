@@ -50,5 +50,5 @@ public interface IClubService {
      *         Las implementaciones pueden traducir errores de bajo nivel a excepciones de dominio más específicas
      *         (por ejemplo, violaciones de unicidad).
      */
-    void createClub(ClubResponseDto clubDto);
+    ClubResponseDto createClub(ClubResponseDto clubDto);
 }
