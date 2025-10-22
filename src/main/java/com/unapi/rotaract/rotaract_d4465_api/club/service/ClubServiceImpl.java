@@ -4,6 +4,7 @@ import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import com.unapi.rotaract.rotaract_d4465_api.club.interfaces.IClubService;
 import com.unapi.rotaract.rotaract_d4465_api.club.repository.ClubRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -94,8 +95,27 @@ public class ClubServiceImpl implements IClubService {
                 .build();
     }
 
+    /**
+     * Crea y persiste un nuevo club a partir de los datos proporcionados en el DTO.
+     *
+     * Comportamiento:
+     * - Si {@code clubDto} es {@code null} se lanza {@link IllegalArgumentException}.
+     * - Se establece {@link LocalDate#now()} en {@code fechaCreacion} y el campo {@code activo}
+     *   se inicializa en {@code true} antes de persistir la entidad.
+     * - La entidad resultante persistida se transforma y devuelve como {@link ClubResponseDto}.
+     *
+     *
+     * @param clubDto DTO con los datos del club a crear. No debe ser {@code null}.
+     * @return {@link ClubResponseDto} con los datos del club creado (incluyendo el id asignado por la base de datos).
+     * @throws IllegalArgumentException si {@code clubDto} es {@code null} o contiene datos inválidos según las reglas de negocio.
+     * @throws org.springframework.dao.DataAccessException en caso de errores de persistencia subyacentes.
+     */
     @Override
-    public ClubResponseDto createClub(ClubResponseDto clubDto) {
+    public ClubResponseDto createClub(@Valid ClubResponseDto clubDto) {
+
+        if (clubDto == null) {
+            throw new IllegalArgumentException("El clubDto no puede ser null.");
+        }
 
         ClubEntity clubEntity = clubRepository.save(
                 ClubEntity
