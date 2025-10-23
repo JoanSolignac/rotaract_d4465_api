@@ -80,7 +80,7 @@ public class UsuarioEntity {
     @JoinColumn(name = "rol_id", nullable = false)
     @ToString.Exclude
     private RolEntity rol;
-
+    
     /**
      * Club al que pertenece el usuario. Relación muchos-a-uno con
      * {@link com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity}.
