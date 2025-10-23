@@ -13,7 +13,6 @@ import lombok.Builder;
  * @param nombre        Nombre público del club Rotaract.
  * @param departamento  Departamento o región donde se ubica el club.
  * @param ciudad        Ciudad o provincia donde opera el club.
- * @param descripcion   Descripción breve del club o sus actividades.
  */
 @Builder
 public record ClubEditRequestDto(
@@ -37,8 +36,5 @@ public record ClubEditRequestDto(
                 regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ\\s\\-]+$",
                 message = "La ciudad solo puede contener letras, espacios y guiones."
         )
-        String ciudad,
-
-        @Size(max = 500, message = "La descripción no puede superar los 500 caracteres.")
-        String descripcion
+        String ciudad
 ) { }

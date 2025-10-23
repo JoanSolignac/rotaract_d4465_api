@@ -139,4 +139,37 @@ public class ClubServiceImpl implements IClubService {
                 .build();
 
     }
+
+    @Override
+    public ClubResponseDto updateClub(long id, ClubResponseDto clubDto) {
+
+        ClubEntity clubEntity = clubRepository.findById(id).orElseThrow(
+                () -> new IllegalArgumentException("Club con id " + id + " no encontrado.")
+        );
+
+        if (clubDto.nombre() != null) {
+            clubEntity.setNombre(clubDto.nombre());
+        }
+
+        if (clubDto.departamento() != null) {
+            clubEntity.setDepartamento(clubDto.departamento());
+        }
+
+        if (clubDto.ciudad() != null) {
+            clubEntity.setCiudad(clubDto.ciudad());
+        }
+
+        ClubEntity updatedClub = clubRepository.save(clubEntity);
+
+        return ClubResponseDto
+                .builder()
+                .id(updatedClub.getId())
+                .nombre(updatedClub.getNombre())
+                .departamento(updatedClub.getDepartamento())
+                .ciudad(updatedClub.getCiudad())
+                .fechaCreacion(updatedClub.getFechaCreacion())
+                .activo(updatedClub.getActivo())
+                .build();
+
+    }
 }

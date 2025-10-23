@@ -51,4 +51,25 @@ public interface IClubService {
      *         (por ejemplo, violaciones de unicidad).
      */
     ClubResponseDto createClub(ClubResponseDto clubDto);
+
+    /**
+     * Actualiza los datos de un club existente identificado por {@code id}.
+     *
+     * La implementación debe:
+     * - Validar que el identificador y los datos del DTO son correctos.
+     * - Comprobar que la entidad existe y lanzar una excepción adecuada si no existe.
+     * - Aplicar los cambios y persistir la entidad en una transacción.
+     *
+     * El contrato no especifica si la actualización es parcial (patch) o completa (put); la implementación
+     * debe documentar el comportamiento concreto. Se recomienda validar campos obligatorios y preservar
+     * valores que no sean suministrados cuando proceda.
+     *
+     * @param id identificador único del club a actualizar (debe ser mayor que 0)
+     * @param clubDto DTO con los nuevos datos del club. No debe ser {@code null}.
+     * @return {@link ClubResponseDto} con los datos actualizados del club
+     * @throws IllegalArgumentException si {@code id} es negativo o cero, o si {@code clubDto} es {@code null} o inválido
+     * @throws java.util.NoSuchElementException si no existe un club con el identificador proporcionado
+     * @throws org.springframework.dao.DataAccessException en caso de errores de persistencia al guardar los cambios
+     */
+    ClubResponseDto updateClub(long id, ClubResponseDto clubDto);
 }
