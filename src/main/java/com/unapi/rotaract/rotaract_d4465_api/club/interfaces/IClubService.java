@@ -1,5 +1,6 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.interfaces;
 
+import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubEditRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubResponseDto;
 import org.springframework.data.domain.Page;
 
@@ -60,16 +61,38 @@ public interface IClubService {
      * - Comprobar que la entidad existe y lanzar una excepción adecuada si no existe.
      * - Aplicar los cambios y persistir la entidad en una transacción.
      *
-     * El contrato no especifica si la actualización es parcial (patch) o completa (put); la implementación
-     * debe documentar el comportamiento concreto. Se recomienda validar campos obligatorios y preservar
-     * valores que no sean suministrados cuando proceda.
+     * Esta operación utiliza {@link ClubEditRequestDto} que representa los
+     * campos editables por la API. Dependiendo de la implementación, el DTO
+     * puede representar una actualización parcial (patch) o completa (put).
+     *
+     * Buenas prácticas recomendadas para la implementación:
+     * - Validar campos obligatorios del DTO antes de persistir.
+     * - No sobrescribir campos que no estén presentes en el DTO si la
+     *   semántica es de actualización parcial.
+     * - Ejecutar la operación dentro de una transacción para garantizar
+     *   consistencia.
      *
      * @param id identificador único del club a actualizar (debe ser mayor que 0)
-     * @param clubDto DTO con los nuevos datos del club. No debe ser {@code null}.
+     * @param clubDto DTO con los nuevos datos del club; no debe ser {@code null}.
      * @return {@link ClubResponseDto} con los datos actualizados del club
      * @throws IllegalArgumentException si {@code id} es negativo o cero, o si {@code clubDto} es {@code null} o inválido
      * @throws java.util.NoSuchElementException si no existe un club con el identificador proporcionado
      * @throws org.springframework.dao.DataAccessException en caso de errores de persistencia al guardar los cambios
      */
-    ClubResponseDto updateClub(long id, ClubResponseDto clubDto);
+    ClubResponseDto updateClub(long id, ClubEditRequestDto clubDto);
+
+    /**
+     * Desactiva (marca como inactivo) el club identificado por {@code id}.
+     *
+     * Esta operación típicamente no elimina físicamente la entidad, sino que
+     * cambia un flag/status que evita que el club aparezca en listados activos.
+     * La implementación debe persistir el cambio y devolver el estado resultante.
+     *
+     * @param id identificador del club a desactivar (debe ser mayor que 0)
+     * @return {@link ClubResponseDto} con la información del club luego de la desactivación
+     * @throws IllegalArgumentException si {@code id} es negativo o cero
+     * @throws java.util.NoSuchElementException si no se encuentra un club con el id proporcionado
+     * @throws org.springframework.dao.DataAccessException en caso de errores de persistencia
+     */
+    ClubResponseDto desactivateClub(long id);
 }
