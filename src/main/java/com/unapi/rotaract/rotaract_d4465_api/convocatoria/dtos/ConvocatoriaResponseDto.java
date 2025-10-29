@@ -5,7 +5,6 @@ import lombok.Builder;
 import java.time.LocalDate;
 
 @Builder
-
 public record ConvocatoriaResponseDto(
         Long id,
         String titulo,
@@ -16,5 +15,4 @@ public record ConvocatoriaResponseDto(
         Integer capacidad,
         LocalDate inicioInscripcion,
         LocalDate finInscripcion
-) {
-}
+) {}

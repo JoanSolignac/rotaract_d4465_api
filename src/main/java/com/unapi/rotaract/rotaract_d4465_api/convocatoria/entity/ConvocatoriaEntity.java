@@ -19,31 +19,13 @@ import java.time.LocalDate;
 public class ConvocatoriaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
-
-    @Column(nullable = false, length = 155)
-    private String titulo;
+    private Long id;
 
     @Column(nullable = false, length = 500)
-    private String descripcion;
+    private String requisitos;
 
-    @Column(nullable = false)
-    private LocalDate fechaInicio;
-
-    @Column(nullable = false)
-    private LocalDate fechaFin;
-
-    @Column(nullable = false, length = 155)
-    private String lugar;
-
-    @Column(nullable = false)
-    private Integer capacidad;
-
-    @Column(nullable = false)
-    private LocalDate inicioInscripcion;
-
-    @Column(nullable = false)
-    private LocalDate finInscripcion;
+    @Column(nullable = false, length = 100)
+    private String tipo;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "club_id", nullable = false)

@@ -1,9 +1,6 @@
 package com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Builder;
 
 import java.time.LocalDate;
@@ -29,6 +26,10 @@ public record ConvocatoriaCreateRequestDto(
 
         @NotBlank(message = "El lugar es obligatorio.")
         @Size(max = 155, message = "El lugar no debe exceder 155 caracteres.")
+        @Pattern(
+                regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ\\s\\-]+$",
+                message = "El lugar solo puede contener letras, espacios y guiones."
+        )
         String lugar,
 
         @NotNull(message = "La capacidad es obligatoria.")
