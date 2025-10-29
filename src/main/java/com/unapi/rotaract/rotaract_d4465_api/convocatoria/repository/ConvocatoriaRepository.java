@@ -11,7 +11,5 @@ import java.util.Optional;
 
 public interface ConvocatoriaRepository extends JpaRepository<ConvocatoriaEntity, Long> {
 
-    Optional<ConvocatoriaEntity> findByNombre(String nombre);
-
     Optional<ConvocatoriaEntity> findById(long id);
 }

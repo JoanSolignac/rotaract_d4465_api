@@ -8,38 +8,14 @@ import java.time.LocalDate;
 @Builder
 
 public record ConvocatoriaCreateRequestDto(
-        @NotNull(message = "El clubId es obligatorio.")
-        Long clubId,
-        @NotBlank(message = "El título es obligatorio.")
-        @Size(max = 155, message = "El título no debe exceder 155 caracteres.")
-        String titulo,
+        @NotBlank(message = "Los requisitos son obligatorios.")
+        @Size(min = 5, max = 1000, message = "Entre 5 y 1000 caracteres.")
+        String requisitos,
 
-        @NotBlank(message = "La descripción es obligatoria.")
-        @Size(max = 500, message = "La descripción no debe exceder 500 caracteres.")
-        String descripcion,
-
-        @NotNull(message = "La fecha de inicio es obligatoria.")
-        LocalDate fechaInicio,
-
-        @NotNull(message = "La fecha de fin es obligatoria.")
-        LocalDate fechaFin,
-
-        @NotBlank(message = "El lugar es obligatorio.")
-        @Size(max = 155, message = "El lugar no debe exceder 155 caracteres.")
-        @Pattern(
-                regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ\\s\\-]+$",
-                message = "El lugar solo puede contener letras, espacios y guiones."
-        )
-        String lugar,
-
-        @NotNull(message = "La capacidad es obligatoria.")
-        @Positive(message = "La capacidad debe ser mayor que 0.")
-        Integer capacidad,
-
-        @NotNull(message = "El inicio de inscripción es obligatorio.")
-        LocalDate inicioInscripcion,
-
-        @NotNull(message = "El fin de inscripción es obligatorio.")
-        LocalDate finInscripcion
+        @NotBlank(message = "El tipo de convocatoria es obligatorio.")
+        @Size(min = 3, max = 100, message = "Entre 3 y 100 caracteres.")
+        @Pattern(regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ\\s\\-_/]+$",
+                message = "Solo letras, espacios y guiones.")
+        String tipo
 ) {
 }
