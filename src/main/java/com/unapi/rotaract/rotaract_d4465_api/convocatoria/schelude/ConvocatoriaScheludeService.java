@@ -24,7 +24,10 @@ public class ConvocatoriaScheludeService {
 
         if (!convocatoriaEntities.isEmpty()) {
             convocatoriaEntities.forEach(
-                    convocatoriaEntity -> convocatoriaEntity.setActivo(false)
+                    convocatoriaEntity -> {
+                        convocatoriaEntity.setActivo(false);
+                        convocatoriaRepository.save(convocatoriaEntity);
+                    }
             );
             log.info("Cantidad de convocatorias desactivadas: {}", convocatoriaEntities.size());
         }else{
