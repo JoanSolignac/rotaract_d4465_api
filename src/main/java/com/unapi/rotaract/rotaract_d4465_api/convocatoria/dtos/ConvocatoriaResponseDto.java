@@ -7,6 +7,12 @@ import java.time.LocalDate;
 @Builder
 public record ConvocatoriaResponseDto(
         Long id,
+        String nombreClub,
+        String titulo,
+        String descripcion,
+        LocalDate fechaInicio,
+        LocalDate fechaFin,
+        String lugar,
         String requisitos,
-        String tipo
+        Boolean activo
 ) {}

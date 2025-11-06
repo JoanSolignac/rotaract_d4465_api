@@ -21,14 +21,29 @@ public class ConvocatoriaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, length = 100)
+    private String titulo;
+
+    @Column(nullable = true, length = 500)
+    private String descripcion;
+
+    @Column(nullable = false)
+    private LocalDate fechaInicio;
+
+    @Column(nullable = false)
+    private LocalDate fechaFin;
+
+    @Column(nullable = false)
+    private String lugar;
+
     @Column(nullable = false, length = 500)
     private String requisitos;
 
-    @Column(nullable = false, length = 100)
-    private String tipo;
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean activo = true;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "club_id", nullable = false)
     private ClubEntity club;
-
 }
