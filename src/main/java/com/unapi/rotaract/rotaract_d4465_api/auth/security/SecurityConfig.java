@@ -63,7 +63,9 @@ public class SecurityConfig {
                         "/swagger-ui.html",
                         "/swagger-resources/**",
                         "/webjars/**",
-                        "/clubs/public/**"
+                        "/webjars/**",
+                        "/clubs/public/**",
+                        "/convocatorias/public/**"
                         ).permitAll() // Endpoints públicos
                 .anyRequest().authenticated()                   // Todo lo demás requiere token
             )
