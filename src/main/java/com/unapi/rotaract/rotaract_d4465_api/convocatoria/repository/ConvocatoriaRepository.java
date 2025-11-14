@@ -38,17 +38,4 @@ public interface ConvocatoriaRepository extends JpaRepository<ConvocatoriaEntity
      * @return lista de convocatorias activas vencidas; puede estar vacía si ninguna coincide
      */
     List<ConvocatoriaEntity> findByActivoTrueAndFechaFinBefore(LocalDate date);
-
-    /**
-     * Desactiva en una única operación todas las convocatorias activas cuya fechaFin es anterior a {@code today}.
-     * Utiliza un UPDATE masivo para evitar cargar y persistir cada entidad individualmente, mejorando el rendimiento
-     * en grandes volúmenes.
-     *
-     * @param today fecha de referencia (normalmente la fecha actual)
-     * @return número de filas afectadas (convocatorias desactivadas)
-     */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Transactional
-    @Query("UPDATE ConvocatoriaEntity c SET c.activo = false WHERE c.activo = true AND c.fechaFin < :today")
-    int deactivateExpired(@Param("today") LocalDate today);
 }
