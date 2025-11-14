@@ -22,6 +22,17 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * Implementación de IConvocatoriaService para operaciones sobre convocatorias.
+ * Proporciona lectura paginada, consulta individual, creación y actualización parcial.
+ * Convenciones:
+ * - page es índice 0-based (0 = primera página).
+ * - size debe ser mayor que 0; de lo contrario se lanza IllegalArgumentException.
+ * - Los métodos devuelven DTOs (ConvocatoriaResponseDto); nunca null.
+ * - El método update aplica sólo campos no nulos del DTO de edición.
+ * Seguridad:
+ * - create y update obtienen el usuario autenticado del SecurityContext y validan pertenencia al club.
+ */
 @Service
 @RequiredArgsConstructor
 
@@ -32,6 +43,15 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
     private final UsuarioRepository usuarioRepository;
 
 
+    /**
+     * Recupera una página de convocatorias.
+     * Construye un Pageable con los parámetros y transforma las entidades en ConvocatoriaResponseDto.
+     * No filtra por estado (incluye activas e inactivas según lo que retorne el repositorio).
+     * @param page índice de página (0-based)
+     * @param size tamaño máximo de elementos por página (debe ser > 0)
+     * @return Page de ConvocatoriaResponseDto correspondiente a la página solicitada (puede estar vacía)
+     * @throws IllegalArgumentException si size <= 0
+     */
     @Override
     public Page<ConvocatoriaResponseDto> findAll(@Valid int page, @Valid int size) {
         if (size <= 0) {
@@ -58,6 +78,13 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
 
     }
 
+    /**
+     * Recupera una convocatoria por su identificador.
+     * Delegado a ConvocatoriaRepository#findById; transforma la entidad en ConvocatoriaResponseDto.
+     * @param id identificador único (> 0)
+     * @return ConvocatoriaResponseDto con los datos de la convocatoria
+     * @throws IllegalArgumentException si id < 0 o si la convocatoria no existe
+     */
     @Override
     public ConvocatoriaResponseDto findById(@Valid Long id) {
         if (id < 0) {
@@ -79,6 +106,13 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                 .build();
     }
 
+    /**
+     * Crea una nueva convocatoria asociada al club del usuario autenticado.
+     * Valida que fechaFin no sea anterior a fechaInicio.
+     * @param convocatoriaCreateRequestDto DTO con datos obligatorios de creación
+     * @return ConvocatoriaResponseDto representando la convocatoria persistida
+     * @throws IllegalArgumentException si fechas inválidas o usuario no encontrado
+     */
     @Override
     public ConvocatoriaResponseDto create(@Valid ConvocatoriaCreateRequestDto convocatoriaCreateRequestDto) {
 
@@ -122,6 +156,15 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                 .build();
     }
 
+    /**
+     * Actualiza parcialmente una convocatoria existente.
+     * Valida que el usuario autenticado pertenezca al mismo club de la convocatoria.
+     * Aplica sólo campos no nulos del DTO de edición.
+     * @param id identificador de la convocatoria a actualizar
+     * @param convocatoriaEditRequestDto DTO con campos editables (puede contener nulos)
+     * @return ConvocatoriaResponseDto con el estado actualizado
+     * @throws IllegalArgumentException si usuario sin permiso, convocatoria inexistente o datos inválidos
+     */
     @Override
     public ConvocatoriaResponseDto update(@Valid Long id, @Valid ConvocatoriaEditRequestDto convocatoriaEditRequestDto) {
 
@@ -178,4 +221,3 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
     }
 
 }
-
