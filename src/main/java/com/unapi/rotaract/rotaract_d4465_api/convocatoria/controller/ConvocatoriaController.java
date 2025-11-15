@@ -5,6 +5,7 @@ import com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos.ConvocatoriaEditR
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos.ConvocatoriaResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.service.ConvocatoriaServiceImpl;
 import com.unapi.rotaract.rotaract_d4465_api.common.dtos.ExceptionResponseDto;
+import com.unapi.rotaract.rotaract_d4465_api.inscripcion.service.InscripcionServiceImpl;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 public class ConvocatoriaController {
 
     private final ConvocatoriaServiceImpl convocatoriaService;
+    private final InscripcionServiceImpl inscripcionService;
 
     /**
      * Devuelve una página de convocatorias.
@@ -190,5 +192,24 @@ public class ConvocatoriaController {
     ) {
         ConvocatoriaResponseDto updatedConvocatoria = convocatoriaService.update(id, convocatoriaEditRequestDto);
         return ResponseEntity.ok(updatedConvocatoria);
+    }
+
+    @PostMapping("/{convocatoriaId}/inscribirse")
+    @PreAuthorize("hasAnyRole('INTERESADO')")
+    public ResponseEntity<String> inscribirse(@PathVariable Long convocatoriaId) {
+
+        inscripcionService.inscribir(convocatoriaId);
+
+        return ResponseEntity.ok("Inscripción registrada correctamente.");
+    }
+
+    @GetMapping("/{convocatoriaId}/inscripciones")
+    @PreAuthorize("hasAnyRole('PRESIDENTE','REPRESENTANTE DISTRITAL')")
+    public ResponseEntity<?> listarInscripciones(
+            @PathVariable Long convocatoriaId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(inscripcionService.listarInscripciones(convocatoriaId, page, size));
     }
 }

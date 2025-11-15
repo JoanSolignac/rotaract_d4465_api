@@ -2,31 +2,27 @@ package com.unapi.rotaract.rotaract_d4465_api.convocatoria.schelude;
 
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.entity.ConvocatoriaEntity;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.repository.ConvocatoriaRepository;
+import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Servicio de programación de tareas sobre convocatorias.
+ * Servicio encargado de ejecutar tareas programadas sobre convocatorias.
  *
- * Función principal: revisar diariamente las convocatorias activas cuya fechaFin ya expiró
- * y marcarlas como inactivas (activo = false) para que no sigan apareciendo como vigentes.
+ * Funcionalidad principal:
+ * - Desactivar automáticamente las convocatorias cuya fechaFin ya venció.
+ * - Rechazar las inscripciones en estado PENDIENTE asociadas a cada convocatoria desactivada.
  *
  * Características:
- * - Frecuencia: se ejecuta a medianoche usando la expresión cron 0 0 0 * * * (todos los días).
- * - Estrategia actual: carga la lista de convocatorias vencidas y actualiza su flag en memoria,
- *   luego realiza un saveAll.
- * - Logging: registra cuántas fueron desactivadas o si no hubo cambios.
- *
- * Posibles mejoras futuras (no implementadas aquí porque sólo se documenta):
- * - Reemplazar el bucle por un UPDATE masivo en el repositorio para mayor eficiencia.
- * - Añadir métricas (Micrometer) para monitoreo de cantidades y tiempos.
- * - Parametrizar zona horaria con el atributo zone de @Scheduled si el servidor no está en la TZ deseada.
- * - Control de concurrencia si se habilitan múltiples nodos (usar locks o shedlock).
+ * - Frecuencia: se ejecuta diariamente a medianoche (00:00) hora de Perú (America/Lima).
+ * - Eficiencia: el rechazo de inscripciones se realiza mediante un UPDATE masivo controlado por el repositorio.
+ * - Seguridad y consistencia: proceso transaccional para evitar estados parciales.
  */
 @Slf4j
 @Service
@@ -34,38 +30,45 @@ import java.util.List;
 public class ConvocatoriaScheludeService {
 
     private final ConvocatoriaRepository convocatoriaRepository;
+    private final InscripcionRepository inscripcionRepository;
 
     /**
-     * Desactiva convocatorias cuya fechaFin es anterior a la fecha actual y aún están marcadas como activas.
+     * Desactiva convocatorias vencidas y rechaza sus inscripciones pendientes.
      *
      * Flujo:
-     * 1. Obtiene todas las convocatorias activas vencidas usando el repositorio.
-     * 2. Cambia su atributo activo a false una por una.
-     * 3. Persiste los cambios con saveAll.
-     * 4. Registra en logs la cantidad afectada o que no hay registros para desactivar.
+     * 1. Obtiene todas las convocatorias activas cuya fechaFin ya expiró.
+     * 2. Cambia su atributo activo a false.
+     * 3. Persiste los cambios.
+     * 4. Ejecuta un UPDATE masivo para rechazar inscripciones pendientes.
      *
-     * Cron: 0 0 0 * * * (todos los días a las 00:00:00). Si se requiere otra zona horaria se puede agregar
-     * el parámetro zone en la anotación @Scheduled.
-     *
-     * Nota de rendimiento: Para un volumen grande, podría optarse por una sentencia UPDATE masiva para evitar
-     * cargar todas las entidades en memoria.
+     * Cron:
+     * 0 0 0 * * *  → todos los días a las 00:00:00 (medianoche).
+     * Zona horaria explícita: America/Lima para asegurar ejecución correcta en Railway/UTC.
      */
-    @Scheduled(cron = "0 0 0 * * *")
+    @Transactional
+    @Scheduled(cron = "0 0 0 * * *", zone = "America/Lima")
     public void deactivateExpiredConvocatorias() {
 
-        List<ConvocatoriaEntity> convocatoriaEntities = convocatoriaRepository.findByActivoTrueAndFechaFinBefore(LocalDate.now());
+        List<ConvocatoriaEntity> convocatoriaEntities =
+                convocatoriaRepository.findByActivoTrueAndFechaFinBefore(LocalDate.now());
 
-        if (!convocatoriaEntities.isEmpty()) {
-            convocatoriaEntities.forEach(
-                    convocatoriaEntity -> {
-                        convocatoriaEntity.setActivo(false);
-                    }
-            );
-            convocatoriaRepository.saveAll(convocatoriaEntities);
-            log.info("Cantidad de convocatorias desactivadas: {}", convocatoriaEntities.size());
-        }else{
+        if (convocatoriaEntities.isEmpty()) {
             log.info("No hay convocatorias para desactivar");
+            return;
         }
+
+        // Desactivar convocatorias vencidas
+        convocatoriaEntities.forEach(convocatoria -> convocatoria.setActivo(false));
+        convocatoriaRepository.saveAll(convocatoriaEntities);
+
+        // Rechazar inscripciones pendientes por cada convocatoria desactivada
+        convocatoriaEntities.forEach(convocatoria -> {
+            int rechazados = inscripcionRepository.rechazarPendientesPorConvocatoria(convocatoria.getId());
+            log.info("Convocatoria {} desactivada: {} inscripciones pendientes rechazadas",
+                    convocatoria.getId(), rechazados);
+        });
+
+        log.info("Total de convocatorias desactivadas: {}", convocatoriaEntities.size());
     }
 
 }

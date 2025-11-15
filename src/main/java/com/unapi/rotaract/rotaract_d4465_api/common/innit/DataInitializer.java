@@ -63,7 +63,6 @@ public class DataInitializer implements CommandLineRunner {
     private void inicializarRoles() {
         List<String> rolesBase = List.of(
                 "INTERESADO",
-                "INVITADO",
                 "SOCIO",
                 "PRESIDENTE",
                 "REPRESENTANTE DISTRITAL"

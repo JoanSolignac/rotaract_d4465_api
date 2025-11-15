@@ -1,10 +1,12 @@
 package com.unapi.rotaract.rotaract_d4465_api.auth.entity;
 
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
+import com.unapi.rotaract.rotaract_d4465_api.inscripcion.entity.InscripcionEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 
 /**
@@ -89,4 +91,9 @@ public class UsuarioEntity {
     @JoinColumn(name = "club_id")
     @ToString.Exclude
     private ClubEntity club;
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<InscripcionEntity> inscripciones;
 }
