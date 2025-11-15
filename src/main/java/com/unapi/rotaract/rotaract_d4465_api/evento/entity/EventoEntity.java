@@ -7,7 +7,7 @@ import lombok.experimental.SuperBuilder;
 import java.time.LocalDate;
 
 /**
- * Superclase base para todos los eventos del sistema Rotaract.
+ * Superclase base para todos los eventos del sistema Rotaract..
  *
  * Contiene los atributos comunes para cualquier tipo de evento:
  * título, descripción, lugar, requisitos, vigencia temporal y estado.
