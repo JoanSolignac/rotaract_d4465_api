@@ -1,20 +1,12 @@
 package com.unapi.rotaract.rotaract_d4465_api.evento.entity;
 
+import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 
-/**
- * Superclase base para todos los eventos del sistema Rotaract..
- *
- * Contiene los atributos comunes para cualquier tipo de evento:
- * título, descripción, lugar, requisitos, vigencia temporal y estado.
- *
- * Utiliza herencia JOINED para mantener organización y evitar duplicación
- * entre tipos específicos como Convocatoria o Proyecto.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,53 +17,48 @@ import java.time.LocalDate;
 @SuperBuilder
 public abstract class EventoEntity {
 
-    /**
-     * Identificador único del evento.
-     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Título del evento o convocatoria.
-     */
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 120)
     private String titulo;
 
-    /**
-     * Descripción detallada del evento.
-     */
     @Column(length = 500)
     private String descripcion;
 
     /**
-     * Ubicación física o virtual del evento.
+     * Lugar donde se ejecutará el evento (proyecto o convocatoria).
      */
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String lugar;
 
     /**
-     * Requisitos necesarios para participar.
+     * Requisitos para poder participar del evento.
      */
-    @Column(nullable = false, length = 500)
+    @Column(nullable = true, length = 500)
     private String requisitos;
 
-    /**
-     * Fecha de inicio del evento.
-     */
-    @Column(nullable = false)
-    private LocalDate fechaInicio;
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "club_id")
+    private ClubEntity club;
 
-    /**
-     * Fecha de finalización del evento.
-     */
     @Column(nullable = false)
-    private LocalDate fechaFin;
+    private LocalDate fechaPublicacion;
 
-    /**
-     * Indica si el evento está activo.
-     */
+    @Column(nullable = false)
+    private LocalDate fechaCierre;
+
+    private Integer cupoMaximo;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     @Builder.Default
-    @Column(nullable = false)
-    private Boolean activo = true;
+    private EstadoEvento estado = EstadoEvento.ACTIVO;
+
+    public enum EstadoEvento {
+        ACTIVO,
+        CERRADO,
+        CANCELADO
+    }
 }

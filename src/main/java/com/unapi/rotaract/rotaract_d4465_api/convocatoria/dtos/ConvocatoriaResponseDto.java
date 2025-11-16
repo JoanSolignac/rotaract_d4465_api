@@ -1,40 +1,34 @@
 package com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos;
 
-import lombok.Builder;
-
 import java.time.LocalDate;
 
 /**
- * DTO de respuesta que representa la información pública y consolidada de una convocatoria Rotaract.
+ * Representación de salida utilizada para exponer los datos completos de una convocatoria.
+ * Este DTO concentra la información relevante para su visualización en interfaces públicas
+ * o administrativas, incluyendo datos descriptivos, fechas clave, cupo disponible y metadatos
+ * del club que la creó.
  *
- * Este objeto se devuelve en las operaciones de lectura (GET) y después de crear/actualizar
- * una convocatoria para mostrar el estado actual completo. A diferencia de
- * {@link com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos.ConvocatoriaEditRequestDto} (usado para
- * actualizaciones parciales), este DTO no se valida para entrada sino que expone los datos ya
- * persistidos y normalizados.
- *
- * No incluye lógica de negocio ni campos sensibles; su propósito es transportar información
- * hacia la capa de presentación.
- *
- * @param id           Identificador único de la convocatoria.
- * @param nombreClub   Nombre oficial del club que emite la convocatoria.
- * @param titulo       Título público de la convocatoria.
- * @param descripcion  Descripción breve u observaciones generales de la convocatoria.
- * @param fechaInicio  Fecha desde la cual la convocatoria se considera abierta / vigente.
- * @param fechaFin     Fecha límite o de cierre para postulación/participación.
- * @param lugar        Ubicación física o virtual donde se desarrollará / aplica la convocatoria.
- * @param requisitos   Condiciones o requisitos que deben cumplir los interesados (texto consolidado).
- * @param activo       Estado actual de la convocatoria (true = activa / visible, false = inactiva / cerrada).
+ * Propósito:
+ * - Estandarizar la estructura de respuesta enviada por la API.
+ * - Evitar exponer directamente las entidades del dominio.
+ * - Proveer una vista consolidada sin información sensible.
  */
-@Builder
 public record ConvocatoriaResponseDto(
         Long id,
-        String nombreClub,
         String titulo,
         String descripcion,
-        LocalDate fechaInicio,
-        LocalDate fechaFin,
-        String lugar,
         String requisitos,
-        Boolean activo
+
+        Integer cupoMaximo,
+
+        LocalDate fechaPublicacion,
+        LocalDate fechaCierre,
+
+        LocalDate fechaInicioPostulacion,
+        LocalDate fechaFinPostulacion,
+
+        Long clubId,
+        String clubNombre,
+
+        String estado
 ) {}

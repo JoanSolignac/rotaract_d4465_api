@@ -4,165 +4,213 @@ import com.unapi.rotaract.rotaract_d4465_api.auth.entity.RolEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.RolRepository;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
-import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.entity.ConvocatoriaEntity;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.repository.ConvocatoriaRepository;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.dtos.InscripcionResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.entity.InscripcionEntity;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.interfaces.IInscripcionService;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
+import com.unapi.rotaract.rotaract_d4465_api.proyecto.entity.ProyectoEntity;
+import com.unapi.rotaract.rotaract_d4465_api.proyecto.repository.ProyectoRepository;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class InscripcionServiceImpl implements IInscripcionService {
 
-    private final UsuarioRepository usuarioRepository;
-    private final ConvocatoriaRepository convocatoriaRepository;
     private final InscripcionRepository inscripcionRepository;
+    private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
+    private final ConvocatoriaRepository convocatoriaRepository;
+    private final ProyectoRepository proyectoRepository;
 
+    // Obtener usuario autenticado
+    private UsuarioEntity getUsuarioAutenticado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = auth.getName();
+
+        return usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario autenticado no encontrado."));
+    }
+
+    // ---------------------------------------------------------------
+    // INSCRIPCIÓN EN CONVOCATORIAS (solo INVITADO)
+    // ---------------------------------------------------------------
     @Override
-    public void inscribir(Long convocatoriaId) {
+    @Transactional
+    public void inscribirseEnConvocatoria(Long convocatoriaId) {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UsuarioEntity usuario = getUsuarioAutenticado();
 
-        if (authentication == null) {
-            throw new RuntimeException("No hay usuario autenticado.");
+        String rol = usuario.getRol().getNombre(); // ← cambio real
+
+        if (!rol.equalsIgnoreCase("INTERESADO")) {
+            throw new IllegalArgumentException("Solo usuarios con rol INTERESADO pueden inscribirse a convocatorias.");
         }
 
-        String correo = authentication.getName();
+        // Verificar que no tenga otra inscripción activa
+        boolean tieneActiva = inscripcionRepository
+                .existsByUsuarioIdAndConvocatoriaIsNotNullAndEstadoIn(
+                        usuario.getId(),
+                        List.of(
+                                InscripcionEntity.EstadoInscripcion.PENDIENTE,
+                                InscripcionEntity.EstadoInscripcion.ACEPTADA
+                        )
+                );
 
-        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con correo: " + correo));
-
-        Long userId = usuario.getId();
+        if (tieneActiva) {
+            throw new IllegalArgumentException("Ya tienes una inscripción activa a una convocatoria.");
+        }
 
         ConvocatoriaEntity convocatoria = convocatoriaRepository.findById(convocatoriaId)
-                .orElseThrow(() -> new RuntimeException("Convocatoria no encontrada."));
-
-        if (!convocatoria.getActivo()) {
-            throw new RuntimeException("La convocatoria ya no está activa.");
-        }
-
-        if (convocatoria.getFechaFin().isBefore(LocalDate.now())) {
-            throw new RuntimeException("La convocatoria ya finalizó.");
-        }
-
-        if (inscripcionRepository.existsByUsuarioIdAndConvocatoriaId(userId, convocatoriaId)) {
-            throw new RuntimeException("Ya estás inscrito en esta convocatoria.");
-        }
-
-        if (inscripcionRepository.existsByUsuarioIdAndEstado(
-                userId,
-                InscripcionEntity.EstadoInscripcion.PENDIENTE
-        )) {
-            throw new RuntimeException("Ya tienes una inscripción pendiente en otra convocatoria.");
-        }
+                .orElseThrow(() -> new IllegalArgumentException("Convocatoria no encontrada."));
 
         InscripcionEntity inscripcion = InscripcionEntity.builder()
                 .usuario(usuario)
                 .convocatoria(convocatoria)
-                .fechaInscripcion(LocalDateTime.now())
+                .fechaRegistro(LocalDateTime.now())
                 .estado(InscripcionEntity.EstadoInscripcion.PENDIENTE)
-                .tipoInscripcion(InscripcionEntity.TipoInscripcion.CONVOCATORIA)
                 .build();
 
         inscripcionRepository.save(inscripcion);
     }
 
+    // ---------------------------------------------------------------
+    // INSCRIPCIÓN EN PROYECTOS (SOCIO o PRESIDENTE)
+    // ---------------------------------------------------------------
     @Override
-    public Page<InscripcionResponseDto> listarInscripciones(Long convocatoriaId, int page, int size) {
+    @Transactional
+    public void inscribirseEnProyecto(Long proyectoId) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        UsuarioEntity usuario = getUsuarioAutenticado();
 
-        Page<InscripcionEntity> resultado = inscripcionRepository.findByConvocatoriaId(convocatoriaId, pageable);
+        String rol = usuario.getRol().getNombre();
 
-        return resultado.map(inscripcion ->
-                new InscripcionResponseDto(
-                        inscripcion.getId(),
-                        inscripcion.getUsuario().getId(),
-                        inscripcion.getUsuario().getNombre(),
-                        inscripcion.getConvocatoria().getId(),
-                        inscripcion.getEstado().name(),
-                        inscripcion.getTipoInscripcion().name(),
-                        inscripcion.getFechaInscripcion().toString()
-                )
-        );
+        if (!(rol.equalsIgnoreCase("SOCIO") || rol.equalsIgnoreCase("PRESIDENTE"))) {
+            throw new IllegalArgumentException("Solo SOCIOS o PRESIDENTES pueden inscribirse a proyectos.");
+        }
+
+        boolean yaInscrito = inscripcionRepository.existsByUsuarioIdAndProyectoId(usuario.getId(), proyectoId);
+
+        if (yaInscrito) {
+            throw new IllegalArgumentException("Ya estás inscrito en este proyecto.");
+        }
+
+        ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
+                .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
+
+        InscripcionEntity inscripcion = InscripcionEntity.builder()
+                .usuario(usuario)
+                .proyecto(proyecto)
+                .fechaRegistro(LocalDateTime.now())
+                .estado(InscripcionEntity.EstadoInscripcion.PENDIENTE)
+                .build();
+
+        inscripcionRepository.save(inscripcion);
     }
 
+    // ---------------------------------------------------------------
+    // ACEPTAR INSCRIPCIÓN
+    // ---------------------------------------------------------------
     @Override
+    @Transactional
     public void aceptarInscripcion(Long inscripcionId) {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String correo = authentication.getName();
+        InscripcionEntity insc = inscripcionRepository.findById(inscripcionId)
+                .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada."));
 
-        UsuarioEntity presidente = usuarioRepository.findByCorreo(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        insc.setEstado(InscripcionEntity.EstadoInscripcion.ACEPTADA);
 
-        if (!presidente.getRol().getNombre().equalsIgnoreCase("PRESIDENTE")) {
-            throw new RuntimeException("No tiene permisos para aceptar inscripciones.");
+        // Si pertenece a una convocatoria → cambiar club y rol
+        if (insc.getConvocatoria() != null) {
+
+            UsuarioEntity usuario = insc.getUsuario();
+            usuario.setClub(insc.getConvocatoria().getClub());
+
+            // Cambiar rol a SOCIO
+            RolEntity rolSocio = rolRepository.findByNombre("SOCIO")
+                    .orElseThrow(() -> new IllegalArgumentException("Rol SOCIO no encontrado."));
+
+            usuario.setRol(rolSocio);
+            usuarioRepository.save(usuario);
         }
 
-        ClubEntity clubDelPresidente = presidente.getClub();
-
-        if (clubDelPresidente == null) {
-            throw new RuntimeException("El presidente no tiene un club asignado.");
-        }
-
-        InscripcionEntity inscripcion = inscripcionRepository.findById(inscripcionId)
-                .orElseThrow(() -> new RuntimeException("Inscripción no encontrada."));
-
-        ConvocatoriaEntity convocatoria = inscripcion.getConvocatoria();
-
-        if (!convocatoria.getClub().getId().equals(clubDelPresidente.getId())) {
-            throw new RuntimeException("No puede aceptar inscripciones de convocatorias de otro club.");
-        }
-
-        UsuarioEntity usuarioAceptado = inscripcion.getUsuario();
-
-        usuarioAceptado.setClub(clubDelPresidente);
-
-        RolEntity rolSocio = rolRepository.findByNombre("SOCIO")
-                .orElseThrow(() -> new RuntimeException("Rol SOCIO no encontrado."));
-
-        usuarioAceptado.setRol(rolSocio);
-
-        usuarioRepository.save(usuarioAceptado);
-
-        inscripcion.setEstado(InscripcionEntity.EstadoInscripcion.ACEPTADO);
-        inscripcionRepository.save(inscripcion);
+        inscripcionRepository.save(insc);
     }
 
+    // ---------------------------------------------------------------
+    // RECHAZAR INSCRIPCIÓN
+    // ---------------------------------------------------------------
+    @Override
+    @Transactional
+    public void rechazarInscripcion(Long inscripcionId) {
+        InscripcionEntity insc = inscripcionRepository.findById(inscripcionId)
+                .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada."));
+
+        insc.setEstado(InscripcionEntity.EstadoInscripcion.RECHAZADA);
+        inscripcionRepository.save(insc);
+    }
+
+    // ---------------------------------------------------------------
+    // LISTADOS
+    // ---------------------------------------------------------------
+    @Override
+    @Transactional(readOnly = true)
+    public Page<InscripcionResponseDto> listarInscripcionesConvocatoria(Long convocatoriaId, int page, int size) {
+        var pageEntities = inscripcionRepository.findByConvocatoriaId(convocatoriaId, PageRequest.of(page, size));
+        return pageEntities.map(this::mapToResponse);
+    }
 
     @Override
-    public void rechazarInscripcion(Long inscripcionId) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String correo = authentication.getName();
-
-        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        if (!usuario.getRol().getNombre().equalsIgnoreCase("PRESIDENTE")) {
-            throw new RuntimeException("No tiene permisos para rechazar inscripciones.");
-        }
-
-        InscripcionEntity inscripcion = inscripcionRepository.findById(inscripcionId)
-                .orElseThrow(() -> new RuntimeException("Inscripción no encontrada."));
-
-        inscripcion.setEstado(InscripcionEntity.EstadoInscripcion.RECHAZADO);
-        inscripcionRepository.save(inscripcion);
+    @Transactional(readOnly = true)
+    public Page<InscripcionResponseDto> listarInscripcionesProyecto(Long proyectoId, int page, int size) {
+        var pageEntities = inscripcionRepository.findByProyectoId(proyectoId, PageRequest.of(page, size));
+        return pageEntities.map(this::mapToResponse);
     }
 
+    // ---------------------------------------------------------------
+    // MAPPER
+    // ---------------------------------------------------------------
+    private InscripcionResponseDto mapToResponse(InscripcionEntity insc) {
 
+        String tipo;
+        Long referenciaId;
+        String referenciaTitulo;
+
+        if (insc.getConvocatoria() != null) {
+            tipo = "CONVOCATORIA";
+            referenciaId = insc.getConvocatoria().getId();
+            referenciaTitulo = insc.getConvocatoria().getTitulo();
+        } else {
+            tipo = "PROYECTO";
+            referenciaId = insc.getProyecto().getId();
+            referenciaTitulo = insc.getProyecto().getTitulo();
+        }
+
+        UsuarioEntity u = insc.getUsuario();
+
+        return new InscripcionResponseDto(
+                insc.getId(),
+                u.getId(),
+                u.getNombre(),
+                u.getCorreo(),
+                tipo,
+                referenciaId,
+                referenciaTitulo,
+                insc.getEstado().name(),
+                insc.getFechaRegistro()
+        );
+    }
 }

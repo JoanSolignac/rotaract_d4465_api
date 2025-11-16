@@ -1,41 +1,38 @@
 package com.unapi.rotaract.rotaract_d4465_api.convocatoria.repository;
 
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.entity.ConvocatoriaEntity;
+import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Repositorio JPA para la entidad {@link ConvocatoriaEntity}.
+ * Repositorio JPA encargado de gestionar la persistencia de entidades
+ * {@link ConvocatoriaEntity}. Proporciona acceso a las operaciones CRUD
+ * básicas mediante {@link JpaRepository} y expone consultas derivadas
+ * específicas para este módulo.
  *
- * Extiende {@link JpaRepository} para proporcionar operaciones CRUD, paginación y
- * funcionalidades de persistencia estándar. Se pueden definir aquí consultas
- * especializadas relacionadas con la gestión y ciclo de vida de las convocatorias.
+ * Comportamiento general:
+ * - Los métodos retornan listas vacías cuando no existen coincidencias.
+ * - Las consultas derivadas siguen convención de nombres estándar de Spring Data JPA.
  */
 @Repository
 public interface ConvocatoriaRepository extends JpaRepository<ConvocatoriaEntity, Long> {
 
     /**
-     * Busca una convocatoria por su identificador único.
+     * Recupera todas las convocatorias asociadas a un club específico.
      *
-     * @param id id de la convocatoria a buscar
-     * @return {@link Optional} que contiene el {@link ConvocatoriaEntity} si existe, o vacío en caso contrario
+     * @param clubId identificador del club creador
+     * @return lista de convocatorias pertenecientes al club indicado
      */
-    Optional<ConvocatoriaEntity> findById(long id);
+    List<ConvocatoriaEntity> findByClubId(Long clubId);
 
     /**
-     * Recupera las convocatorias activas cuya fecha de fin ya pasó antes de la fecha especificada.
-     * Útil para procesos de cierre automático o archivado de convocatorias vencidas.
+     * Obtiene todas las convocatorias que presenten un estado determinado.
      *
-     * @param date fecha de referencia para comparar el campo fechaFin
-     * @return lista de convocatorias activas vencidas; puede estar vacía si ninguna coincide
+     * @param estado estado de la convocatoria según {@link EventoEntity.EstadoEvento}
+     * @return lista de convocatorias filtradas por estado
      */
-    List<ConvocatoriaEntity> findByActivoTrueAndFechaFinBefore(LocalDate date);
+    List<ConvocatoriaEntity> findByEstado(EventoEntity.EstadoEvento estado);
 }

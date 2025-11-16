@@ -1,27 +1,15 @@
 package com.unapi.rotaract.rotaract_d4465_api.convocatoria.entity;
 
-import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-/**
- * Representa una Convocatoria emitida por un Club Rotaract.
- *
- * Hereda todos los campos comunes de EventoEntity:
- * - titulo
- * - descripcion
- * - lugar
- * - requisitos
- * - fechaInicio / fechaFin
- * - activo
- *
- * Esta entidad define únicamente aquello que es exclusivo de una convocatoria:
- * su relación con un Club.
- */
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "convocatorias")
+@DiscriminatorValue("CONVOCATORIA")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,12 +18,20 @@ import lombok.experimental.SuperBuilder;
 public class ConvocatoriaEntity extends EventoEntity {
 
     /**
-     * Club emisor de la convocatoria.
-     * Relación muchos-a-uno con {@link ClubEntity}.
-     *
-     * Una convocatoria siempre pertenece a un club.
+     * Fecha desde la cual los usuarios pueden postular.
      */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "club_id", nullable = false)
-    private ClubEntity club;
+    @Column(nullable = false)
+    private LocalDate fechaInicioPostulacion;
+
+    /**
+     * Fecha límite de postulación.
+     */
+    @Column(nullable = false)
+    private LocalDate fechaFinPostulacion;
+
+    /**
+     * Requisitos específicos de la convocatoria.
+     */
+    @Column(length = 500)
+    private String requisitos;
 }

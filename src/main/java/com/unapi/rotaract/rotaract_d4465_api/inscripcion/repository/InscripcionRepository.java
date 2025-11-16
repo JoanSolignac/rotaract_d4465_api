@@ -4,25 +4,35 @@ import com.unapi.rotaract.rotaract_d4465_api.inscripcion.entity.InscripcionEntit
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.stereotype.Repository;
 
-@Repository
+import java.util.List;
+
+/**
+ * Repositorio JPA para la persistencia y consulta de inscripciones.
+ */
 public interface InscripcionRepository extends JpaRepository<InscripcionEntity, Long> {
 
-    boolean existsByUsuarioIdAndConvocatoriaId(Long usuarioId, Long convocatoriaId);
+    /**
+     * Verifica si el usuario ya tiene una inscripción activa (PENDIENTE o ACEPTADA)
+     * a cualquier convocatoria.
+     */
+    boolean existsByUsuarioIdAndConvocatoriaIsNotNullAndEstadoIn(
+            Long usuarioId,
+            List<InscripcionEntity.EstadoInscripcion> estados
+    );
 
-    boolean existsByUsuarioIdAndEstado(Long usuarioId, InscripcionEntity.EstadoInscripcion estado);
+    /**
+     * Verifica si el usuario ya está inscrito a un proyecto específico.
+     */
+    boolean existsByUsuarioIdAndProyectoId(Long usuarioId, Long proyectoId);
 
+    /**
+     * Devuelve las inscripciones asociadas a una convocatoria.
+     */
     Page<InscripcionEntity> findByConvocatoriaId(Long convocatoriaId, Pageable pageable);
 
-    @Modifying
-    @Query("""
-        UPDATE InscripcionEntity i
-        SET i.estado = 'RECHAZADO'
-        WHERE i.convocatoria.id = :convocatoriaId
-          AND i.estado = 'PENDIENTE'
-    """)
-    int rechazarPendientesPorConvocatoria(Long convocatoriaId);
+    /**
+     * Devuelve las inscripciones asociadas a un proyecto.
+     */
+    Page<InscripcionEntity> findByProyectoId(Long proyectoId, Pageable pageable);
 }

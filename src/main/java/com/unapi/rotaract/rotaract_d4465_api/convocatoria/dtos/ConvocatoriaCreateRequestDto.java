@@ -1,52 +1,74 @@
 package com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos;
 
 import jakarta.validation.constraints.*;
-import lombok.Builder;
-
 import java.time.LocalDate;
 
 /**
- * DTO de solicitud utilizado para la creación de una nueva convocatoria Rotaract.
+ * Representa los datos requeridos para la creación de una nueva convocatoria.
+ * Este DTO es utilizado por el controlador durante el proceso de registro.
  *
- * Este objeto se emplea en las operaciones de creación (POST) para recibir
- * los datos necesarios al registrar una convocatoria dentro del sistema.
+ * El club ya no se recibe como parámetro, debido a que se obtiene
+ * automáticamente desde la sesión del usuario autenticado.
  *
- * @param titulo        Título o nombre público de la convocatoria.
- * @param descripcion   Descripción breve u observaciones sobre la convocatoria.
- * @param fechaInicio   Fecha de inicio de la convocatoria.
- * @param fechaFin      Fecha de cierre de la convocatoria.
- * @param lugar         Lugar físico o virtual donde se desarrollará la convocatoria.
- * @param requisitos    Condiciones o requisitos que deben cumplir los interesados.
+ * Validaciones aplicadas:
+ * - Los campos obligatorios deben contener valores válidos.
+ * - Las fechas deben ser coherentes cronológicamente durante la validación
+ *   realizada en la capa de servicio.
  */
-@Builder
 public record ConvocatoriaCreateRequestDto(
 
-        @NotBlank(message = "El título de la convocatoria es obligatorio.")
-        @Size(min = 3, max = 100, message = "El título debe tener entre 3 y 100 caracteres.")
-        @Pattern(
-                regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\\s\\-\\.]+$",
-                message = "El título solo puede contener letras, números, espacios, guiones o puntos."
-        )
+        /**
+         * Título de la convocatoria.
+         * No debe estar vacío y tiene un límite máximo de 120 caracteres.
+         */
+        @NotBlank(message = "El título es obligatorio.")
+        @Size(max = 120, message = "El título no debe exceder 120 caracteres.")
         String titulo,
 
-        @Size(max = 500, message = "La descripción no puede superar los 500 caracteres.")
+        /**
+         * Descripción de la convocatoria.
+         * Es opcional, pero su extensión no debe superar los 500 caracteres.
+         */
+        @Size(max = 500, message = "La descripción no debe exceder 500 caracteres.")
         String descripcion,
 
-        @NotNull(message = "La fecha de inicio es obligatoria.")
-        LocalDate fechaInicio,
+        /**
+         * Cupo máximo permitido para la convocatoria.
+         * Debe ser un número positivo.
+         */
+        @NotNull(message = "El cupo máximo es obligatorio.")
+        @Positive(message = "El cupo máximo debe ser un número positivo.")
+        Integer cupoMaximo,
 
-        @NotNull(message = "La fecha de fin es obligatoria.")
-        LocalDate fechaFin,
+        /**
+         * Fecha desde la cual será visible públicamente la convocatoria.
+         */
+        @NotNull(message = "La fecha de publicación es obligatoria.")
+        LocalDate fechaPublicacion,
 
-        @NotBlank(message = "El lugar es obligatorio.")
-        @Size(min = 3, max = 255, message = "El lugar debe tener entre 3 y 255 caracteres.")
-        @Pattern(
-                regexp = "^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9\\s\\-\\.\\,\\-]+$",
-                message = "El lugar solo puede contener letras, números, espacios, comas, guiones o puntos."
-        )
-        String lugar,
+        /**
+         * Fecha límite en la cual la convocatoria dejará de estar visible.
+         */
+        @NotNull(message = "La fecha de cierre es obligatoria.")
+        LocalDate fechaCierre,
 
-        @NotBlank(message = "Los requisitos son obligatorios.")
-        @Size(min = 5, max = 500, message = "Los requisitos deben tener entre 5 y 500 caracteres.")
+        /**
+         * Fecha de inicio del proceso de postulación.
+         */
+        @NotNull(message = "La fecha de inicio de postulación es obligatoria.")
+        LocalDate fechaInicioPostulacion,
+
+        /**
+         * Fecha límite del proceso de postulación.
+         */
+        @NotNull(message = "La fecha de fin de postulación es obligatoria.")
+        LocalDate fechaFinPostulacion,
+
+        /**
+         * Requisitos opcionales para la postulación.
+         * Su extensión no debe exceder los 500 caracteres.
+         */
+        @Size(max = 500, message = "Los requisitos no deben exceder 500 caracteres.")
         String requisitos
-) { }
+
+) {}

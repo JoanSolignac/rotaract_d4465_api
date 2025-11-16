@@ -1,6 +1,7 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.entity;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
+import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -72,4 +73,13 @@ public class ClubEntity {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<UsuarioEntity> miembros;
+
+    /**
+     * Eventos creados por este club (convocatorias y proyectos).
+     * Relación uno-a-muchos con EventoEntity.
+     */
+    @OneToMany(mappedBy = "club", fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<EventoEntity> eventos;
 }
