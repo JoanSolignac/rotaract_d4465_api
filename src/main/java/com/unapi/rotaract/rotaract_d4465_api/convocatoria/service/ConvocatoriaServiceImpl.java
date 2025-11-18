@@ -14,10 +14,13 @@ import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * Servicio responsable de gestionar el ciclo de vida de las convocatorias.
@@ -52,6 +55,22 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
 
         return convocatoriaRepository.findAll(PageRequest.of(page, size))
                 .map(this::mapToResponse);
+    }
+
+    @Override
+    public Page<ConvocatoriaResponseDto> findAllByPresidente(int page, int size) {
+
+        String correo =  SecurityContextHolder.getContext().getAuthentication().getName();
+        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo).orElseThrow(
+                () -> new IllegalStateException("Usuario autenticado no encontrado.")
+        );
+
+        ClubEntity club = usuario.getClub();
+        List<ConvocatoriaResponseDto> convocatoriaEntityList = convocatoriaRepository.findByClubId(club.getId()).stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return new PageImpl<>(convocatoriaEntityList, PageRequest.of(page, size), convocatoriaEntityList.size());
     }
 
     /**

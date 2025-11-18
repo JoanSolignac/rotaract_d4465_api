@@ -27,6 +27,15 @@ public interface IConvocatoriaService {
     Page<ConvocatoriaResponseDto> findAll(int page, int size);
 
     /**
+     * Recupera una página de convocatorias en función de los parámetros de paginación.
+     *
+     * @param page índice de página (0-based)
+     * @param size cantidad máxima de elementos por página
+     * @return página de convocatorias transformadas a {@link ConvocatoriaResponseDto}
+     */
+    Page<ConvocatoriaResponseDto> findAllByPresidente(int page, int size);
+
+    /**
      * Obtiene una convocatoria según su identificador único.
      *
      * @param id identificador de la convocatoria
