@@ -69,6 +69,7 @@ public class ConvocatoriaController {
     // =====================================================================
 
     @GetMapping
+    @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(
             summary = "Listar convocatorias del presidente",
             description = "Devuelve una página de convocatorias del club del presidente autenticado."
