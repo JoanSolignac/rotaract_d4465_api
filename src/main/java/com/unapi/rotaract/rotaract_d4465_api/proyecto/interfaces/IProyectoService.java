@@ -26,6 +26,8 @@ public interface IProyectoService {
      */
     Page<ProyectoResponseDto> findAll(int page, int size);
 
+    Page<ProyectoResponseDto> findAllByPresidente(int page, int size);
+
     /**
      * Obtiene los datos de un proyecto específico identificado por su ID.
      * En caso de no existir, la implementación deberá gestionar la excepción.

@@ -1,6 +1,7 @@
 package com.unapi.rotaract.rotaract_d4465_api.proyecto.controller;
 
 import com.unapi.rotaract.rotaract_d4465_api.common.dtos.ExceptionResponseDto;
+import com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos.ConvocatoriaResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.dtos.InscripcionResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.interfaces.IInscripcionService;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.dtos.ProyectoCreateRequestDto;
@@ -9,9 +10,11 @@ import com.unapi.rotaract.rotaract_d4465_api.proyecto.dtos.ProyectoResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.interfaces.IProyectoService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import jakarta.validation.Valid;
@@ -52,6 +55,32 @@ public class ProyectoController {
     @Operation(summary = "Obtener proyecto", description = "Recupera los detalles de un proyecto por su identificador.")
     public ResponseEntity<ProyectoResponseDto> obtenerProyecto(@PathVariable Long id) {
         return ResponseEntity.ok(proyectoService.findById(id));
+    }
+
+    // ============================================================
+    // LISTAR PROYECTOS POR PRESIDENTE
+    // ============================================================
+
+    @GetMapping
+    @PreAuthorize("hasRole('PRESIDENTE')")
+    @Operation(
+            summary = "Listar convocatorias del presidente",
+            description = "Devuelve una página de convocatorias del club del presidente autenticado."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Listado obtenido correctamente",
+                    content = @Content(schema = @Schema(implementation = ConvocatoriaResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "Parámetros inválidos",
+                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
+    })
+    public ResponseEntity<Page<ProyectoResponseDto>> listarProyectosPresidente(
+            @Valid @RequestParam(defaultValue = "0")
+            @Parameter(description = "Número de página (0-based)") int page,
+
+            @RequestParam(defaultValue = "10")
+            @Parameter(description = "Cantidad de resultados por página") int size
+    ) {
+        return ResponseEntity.ok(proyectoService.findAllByPresidente(page, size));
     }
 
     // ============================================================

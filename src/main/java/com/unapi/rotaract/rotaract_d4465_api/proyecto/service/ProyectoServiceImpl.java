@@ -12,11 +12,14 @@ import com.unapi.rotaract.rotaract_d4465_api.proyecto.repository.ProyectoReposit
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * Servicio encargado de gestionar la información y el ciclo de vida
@@ -38,6 +41,26 @@ public class ProyectoServiceImpl implements IProyectoService {
     public Page<ProyectoResponseDto> findAll(int page, int size) {
         return proyectoRepository.findAll(PageRequest.of(page, size))
                 .map(this::mapToResponse);
+    }
+
+    @Override
+    public Page<ProyectoResponseDto> findAllByPresidente(int page, int size) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = auth.getName();
+
+        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
+
+        List<ProyectoResponseDto> proyectos = proyectoRepository.findByClubId(usuario.getClub().getId())
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return new PageImpl<>(
+                proyectos,
+                PageRequest.of(page, size),
+                proyectos.size()
+        );
     }
 
     /**
