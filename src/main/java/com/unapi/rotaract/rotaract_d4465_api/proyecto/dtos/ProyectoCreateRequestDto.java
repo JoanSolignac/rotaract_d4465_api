@@ -34,6 +34,9 @@ public record ProyectoCreateRequestDto(
         @NotBlank(message = "El lugar es obligatorio.")
         String lugar,
 
+        @Positive(message = "El cupo máximo no puede ser menor a cero")
+        Integer cupoMaximo,
+
         @Size(max = 500, message = "Los requisitos no deben exceder 500 caracteres.")
         String requisitos
 

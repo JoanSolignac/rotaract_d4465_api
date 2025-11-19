@@ -102,7 +102,8 @@ public class ProyectoServiceImpl implements IProyectoService {
         proyecto.setFechaCierre(dto.fechaFinPostulacion());
         proyecto.setEstado(EventoEntity.EstadoEvento.ACTIVO);
         proyecto.setClub(usuario.getClub());
-
+        proyecto.setCupoMaximo(dto.cupoMaximo());
+        proyecto.setInscritos(0);
         proyecto.setObjetivo(dto.objetivo());
         proyecto.setFechaInicioPostulacion(dto.fechaInicioPostulacion());
         proyecto.setFechaFinPostulacion(dto.fechaFinPostulacion());
@@ -130,7 +131,7 @@ public class ProyectoServiceImpl implements IProyectoService {
         if (dto.descripcion() != null) p.setDescripcion(dto.descripcion());
         if (dto.requisitos() != null) p.setRequisitos(dto.requisitos());
         if (dto.lugar() != null) p.setLugar(dto.lugar());
-
+        if (dto.cupoMaximo() != null) p.setCupoMaximo(dto.cupoMaximo());
         if (dto.objetivo() != null) p.setObjetivo(dto.objetivo());
         if (dto.fechaInicioPostulacion() != null) p.setFechaInicioPostulacion(dto.fechaInicioPostulacion());
         if (dto.fechaFinPostulacion() != null) p.setFechaFinPostulacion(dto.fechaFinPostulacion());

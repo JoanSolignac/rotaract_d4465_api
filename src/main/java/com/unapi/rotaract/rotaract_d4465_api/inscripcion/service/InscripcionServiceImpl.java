@@ -108,8 +108,16 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
         String rol = usuario.getRol().getNombre();
 
+        ProyectoEntity proyectoEntity = proyectoRepository.findById(proyectoId).orElseThrow(
+                () -> new IllegalArgumentException("Proyecto no encontrado.")
+        );
+
         if (!(rol.equalsIgnoreCase("SOCIO") || rol.equalsIgnoreCase("PRESIDENTE"))) {
             throw new IllegalArgumentException("Solo SOCIOS o PRESIDENTES pueden inscribirse a proyectos.");
+        }
+
+        if (proyectoEntity.getCupoMaximo() - proyectoEntity.getInscritos() <= 0) {
+            throw new  IllegalArgumentException("La proyecto no tiene cupo disponible.");
         }
 
         boolean yaInscrito = inscripcionRepository.existsByUsuarioIdAndProyectoId(usuario.getId(), proyectoId);
@@ -121,6 +129,7 @@ public class InscripcionServiceImpl implements IInscripcionService {
         ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
 
+
         InscripcionEntity inscripcion = InscripcionEntity.builder()
                 .usuario(usuario)
                 .proyecto(proyecto)
@@ -129,6 +138,8 @@ public class InscripcionServiceImpl implements IInscripcionService {
                 .build();
 
         inscripcionRepository.save(inscripcion);
+        proyectoEntity.setInscritos(proyectoEntity.getInscritos() + 1);
+        proyectoRepository.save(proyecto);
     }
 
     // ---------------------------------------------------------------

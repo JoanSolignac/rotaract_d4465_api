@@ -25,6 +25,8 @@ public record ProyectoEditRequestDto(
          */
         String objetivo,
 
+        Integer cupoMaximo,
+
         /**
          * Fecha de inicio de la fase de postulación.
          * Si se envía, será validada en la capa de servicio.
