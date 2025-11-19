@@ -51,6 +51,8 @@ public abstract class EventoEntity {
 
     private Integer cupoMaximo;
 
+    private Integer inscritos;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

@@ -20,7 +20,7 @@ public record ConvocatoriaResponseDto(
         String requisitos,
 
         Integer cupoMaximo,
-
+        Integer inscritos,
         LocalDate fechaPublicacion,
         LocalDate fechaCierre,
 

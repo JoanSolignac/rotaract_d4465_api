@@ -132,6 +132,7 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                 .fechaInicioPostulacion(dto.fechaInicioPostulacion())
                 .fechaFinPostulacion(dto.fechaFinPostulacion())
                 .requisitos(dto.requisitos())
+                .inscritos(0)
                 .estado(EventoEntity.EstadoEvento.ACTIVO)
                 .build();
 
@@ -232,6 +233,7 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                 c.getDescripcion(),
                 c.getRequisitos(),
                 c.getCupoMaximo(),
+                c.getInscritos(),
                 c.getFechaPublicacion(),
                 c.getFechaCierre(),
                 c.getFechaInicioPostulacion(),

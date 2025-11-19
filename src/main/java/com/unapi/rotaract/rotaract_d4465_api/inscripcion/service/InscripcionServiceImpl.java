@@ -56,6 +56,13 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
         String rol = usuario.getRol().getNombre(); // ← cambio real
 
+        ConvocatoriaEntity convocatoriaEntity = convocatoriaRepository.findById(convocatoriaId)
+                .orElseThrow(() -> new IllegalArgumentException("Convocatoria no encontrada."));
+
+        if (convocatoriaEntity.getCupoMaximo() - convocatoriaEntity.getInscritos()  <= 0){
+            throw new IllegalArgumentException("La convocatoria no tiene cupo disponible.");
+        }
+
         if (!rol.equalsIgnoreCase("INTERESADO")) {
             throw new IllegalArgumentException("Solo usuarios con rol INTERESADO pueden inscribirse a convocatorias.");
         }
@@ -85,6 +92,9 @@ public class InscripcionServiceImpl implements IInscripcionService {
                 .build();
 
         inscripcionRepository.save(inscripcion);
+
+        convocatoriaEntity.setInscritos(convocatoriaEntity.getInscritos() + 1);
+        convocatoriaRepository.save(convocatoriaEntity);
     }
 
     // ---------------------------------------------------------------
