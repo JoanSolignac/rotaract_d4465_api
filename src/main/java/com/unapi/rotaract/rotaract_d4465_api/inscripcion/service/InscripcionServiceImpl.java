@@ -138,8 +138,6 @@ public class InscripcionServiceImpl implements IInscripcionService {
                 .build();
 
         inscripcionRepository.save(inscripcion);
-        proyectoEntity.setInscritos(proyectoEntity.getInscritos() + 1);
-        proyectoRepository.save(proyecto);
     }
 
     // ---------------------------------------------------------------
@@ -168,7 +166,13 @@ public class InscripcionServiceImpl implements IInscripcionService {
             usuarioRepository.save(usuario);
         }
 
+        ProyectoEntity proyectoEntity = proyectoRepository.findById(insc.getProyecto().getId()).orElseThrow(
+                () -> new IllegalArgumentException("Proyecto no encontrado.")
+        );
+        proyectoEntity.setInscritos(proyectoEntity.getInscritos() + 1);
+
         inscripcionRepository.save(insc);
+        proyectoRepository.save(proyectoEntity);
     }
 
     // ---------------------------------------------------------------
