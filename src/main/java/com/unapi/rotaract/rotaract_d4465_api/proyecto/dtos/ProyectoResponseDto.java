@@ -1,5 +1,7 @@
 package com.unapi.rotaract.rotaract_d4465_api.proyecto.dtos;
 
+import lombok.Builder;
+
 import java.time.LocalDate;
 
 /**
@@ -12,6 +14,7 @@ import java.time.LocalDate;
  * ejecución, así como datos básicos del club responsable y el estado actual
  * del proyecto.
  */
+@Builder
 public record ProyectoResponseDto(
 
         /**
@@ -77,6 +80,10 @@ public record ProyectoResponseDto(
         /**
          * Estado actual del proyecto, representado como cadena.
          */
-        String estadoProyecto
+        String estadoProyecto,
+
+        Integer cupoMaximo,
+
+        Integer inscritos
 
 ) {}

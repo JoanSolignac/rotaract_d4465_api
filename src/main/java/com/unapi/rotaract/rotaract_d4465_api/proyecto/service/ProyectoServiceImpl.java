@@ -191,20 +191,25 @@ public class ProyectoServiceImpl implements IProyectoService {
      * la exposición pública mediante la API, evitando exponer entidades internas.
      */
     private ProyectoResponseDto mapToResponse(ProyectoEntity e) {
-        return new ProyectoResponseDto(
-                e.getId(),
-                e.getTitulo(),
-                e.getDescripcion(),
-                e.getObjetivo(),
-                e.getRequisitos(),
-                e.getLugar(),
-                e.getFechaInicioPostulacion(),
-                e.getFechaFinPostulacion(),
-                e.getFechaInicioProyecto(),
-                e.getFechaFinProyecto(),
-                e.getClub() != null ? e.getClub().getId() : null,
-                e.getClub() != null ? e.getClub().getNombre() : null,
-                e.getEstadoProyecto().name()
-        );
+
+        return ProyectoResponseDto
+                .builder()
+                .id(e.getId())
+                .estadoProyecto(e.getEstadoProyecto().toString())
+                .cupoMaximo(e.getCupoMaximo())
+                .titulo(e.getTitulo())
+                .descripcion(e.getDescripcion())
+                .objetivo(e.getObjetivo())
+                .requisitos(e.getRequisitos())
+                .lugar(e.getLugar())
+                .fechaInicioPostulacion(e.getFechaInicioPostulacion())
+                .fechaFinPostulacion(e.getFechaFinPostulacion())
+                .fechaInicioProyecto(e.getFechaInicioProyecto())
+                .fechaFinProyecto(e.getFechaFinProyecto())
+                .clubId(e.getClub() != null ? e.getClub().getId() : null)
+                .clubNombre(e.getClub() != null ? e.getClub().getNombre() : null)
+                .inscritos(e.getInscritos())
+                .build();
+
     }
 }
