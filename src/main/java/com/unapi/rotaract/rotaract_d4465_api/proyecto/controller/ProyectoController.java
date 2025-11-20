@@ -58,14 +58,14 @@ public class ProyectoController {
     }
 
     // ============================================================
-    // LISTAR PROYECTOS POR PRESIDENTE
+    // LISTAR PROYECTOS POR PRESIDENTE - SOCIO
     // ============================================================
 
     @GetMapping
-    @PreAuthorize("hasRole('PRESIDENTE')")
+    @PreAuthorize("hasRole('SOCIO') or hasRole('PRESIDENTE')")
     @Operation(
-            summary = "Listar convocatorias del presidente",
-            description = "Devuelve una página de convocatorias del club del presidente autenticado."
+            summary = "Listar convocatorias del presidente y del Socio",
+            description = "Devuelve una página de convocatorias del club del presidente y socio autenticado."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Listado obtenido correctamente",
@@ -80,7 +80,7 @@ public class ProyectoController {
             @RequestParam(defaultValue = "10")
             @Parameter(description = "Cantidad de resultados por página") int size
     ) {
-        return ResponseEntity.ok(proyectoService.findAllByPresidente(page, size));
+        return ResponseEntity.ok(proyectoService.findAllBySocioPresidente(page, size));
     }
 
     // ============================================================

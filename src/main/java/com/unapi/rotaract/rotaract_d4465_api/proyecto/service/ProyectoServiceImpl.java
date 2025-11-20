@@ -44,7 +44,7 @@ public class ProyectoServiceImpl implements IProyectoService {
     }
 
     @Override
-    public Page<ProyectoResponseDto> findAllByPresidente(int page, int size) {
+    public Page<ProyectoResponseDto> findAllBySocioPresidente(int page, int size) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String correo = auth.getName();
 
