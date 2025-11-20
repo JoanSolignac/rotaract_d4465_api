@@ -128,6 +128,7 @@ public class ProyectoServiceImpl implements IProyectoService {
         ProyectoEntity p = proyectoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proyecto no encontrado."));
 
+        if (dto.titulo() != null) p.setTitulo(dto.titulo());
         if (dto.descripcion() != null) p.setDescripcion(dto.descripcion());
         if (dto.requisitos() != null) p.setRequisitos(dto.requisitos());
         if (dto.lugar() != null) p.setLugar(dto.lugar());

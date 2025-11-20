@@ -58,6 +58,8 @@ public record ProyectoEditRequestDto(
         /**
          * Lugar donde se ejecutará el proyecto.
          */
-        String lugar
+        String lugar,
+
+        String titulo
 
 ) {}
