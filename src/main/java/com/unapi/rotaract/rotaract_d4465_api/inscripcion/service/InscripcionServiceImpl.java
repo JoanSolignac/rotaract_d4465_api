@@ -181,11 +181,18 @@ public class InscripcionServiceImpl implements IInscripcionService {
     @Override
     @Transactional
     public void rechazarInscripcion(Long inscripcionId) {
+
         InscripcionEntity insc = inscripcionRepository.findById(inscripcionId)
                 .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada."));
 
+        ProyectoEntity proyectoEntity = proyectoRepository.findById(insc.getProyecto().getId()).orElseThrow(
+                () -> new IllegalArgumentException("Proyecto no encontrado.")
+        );
+        proyectoEntity.setInscritos(proyectoEntity.getInscritos() - 1);
+
         insc.setEstado(InscripcionEntity.EstadoInscripcion.RECHAZADA);
         inscripcionRepository.save(insc);
+        proyectoRepository.save(proyectoEntity);
     }
 
     // ---------------------------------------------------------------
