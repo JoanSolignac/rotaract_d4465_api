@@ -16,9 +16,7 @@ import com.unapi.rotaract.rotaract_d4465_api.proyecto.repository.ProyectoReposit
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -37,7 +35,9 @@ public class InscripcionServiceImpl implements IInscripcionService {
     private final ConvocatoriaRepository convocatoriaRepository;
     private final ProyectoRepository proyectoRepository;
 
-    // Obtener usuario autenticado
+    // ---------------------------------------------------------------
+    // OBTENER USUARIO AUTENTICADO
+    // ---------------------------------------------------------------
     private UsuarioEntity getUsuarioAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String correo = auth.getName();
@@ -46,22 +46,20 @@ public class InscripcionServiceImpl implements IInscripcionService {
                 .orElseThrow(() -> new IllegalArgumentException("Usuario autenticado no encontrado."));
     }
 
-
     // ---------------------------------------------------------------
-    // INSCRIPCIÓN EN CONVOCATORIAS (solo INVITADO)
+    // INSCRIPCIÓN EN CONVOCATORIAS (solo INTERESADO)
     // ---------------------------------------------------------------
     @Override
     @Transactional
     public void inscribirseEnConvocatoria(Long convocatoriaId) {
 
         UsuarioEntity usuario = getUsuarioAutenticado();
-
-        String rol = usuario.getRol().getNombre(); // ← cambio real
+        String rol = usuario.getRol().getNombre();
 
         ConvocatoriaEntity convocatoriaEntity = convocatoriaRepository.findById(convocatoriaId)
                 .orElseThrow(() -> new IllegalArgumentException("Convocatoria no encontrada."));
 
-        if (convocatoriaEntity.getCupoMaximo() - convocatoriaEntity.getInscritos()  <= 0){
+        if (convocatoriaEntity.getCupoMaximo() - convocatoriaEntity.getInscritos() <= 0) {
             throw new IllegalArgumentException("La convocatoria no tiene cupo disponible.");
         }
 
@@ -69,7 +67,7 @@ public class InscripcionServiceImpl implements IInscripcionService {
             throw new IllegalArgumentException("Solo usuarios con rol INTERESADO pueden inscribirse a convocatorias.");
         }
 
-        // Verificar que no tenga otra inscripción activa
+        // Verificar inscripción activa
         boolean tieneActiva = inscripcionRepository
                 .existsByUsuarioIdAndConvocatoriaIsNotNullAndEstadoIn(
                         usuario.getId(),
@@ -83,12 +81,9 @@ public class InscripcionServiceImpl implements IInscripcionService {
             throw new IllegalArgumentException("Ya tienes una inscripción activa a una convocatoria.");
         }
 
-        ConvocatoriaEntity convocatoria = convocatoriaRepository.findById(convocatoriaId)
-                .orElseThrow(() -> new IllegalArgumentException("Convocatoria no encontrada."));
-
         InscripcionEntity inscripcion = InscripcionEntity.builder()
                 .usuario(usuario)
-                .convocatoria(convocatoria)
+                .convocatoria(convocatoriaEntity)
                 .fechaRegistro(LocalDateTime.now())
                 .estado(InscripcionEntity.EstadoInscripcion.PENDIENTE)
                 .build();
@@ -107,19 +102,17 @@ public class InscripcionServiceImpl implements IInscripcionService {
     public void inscribirseEnProyecto(Long proyectoId) {
 
         UsuarioEntity usuario = getUsuarioAutenticado();
-
         String rol = usuario.getRol().getNombre();
 
-        ProyectoEntity proyectoEntity = proyectoRepository.findById(proyectoId).orElseThrow(
-                () -> new IllegalArgumentException("Proyecto no encontrado.")
-        );
+        ProyectoEntity proyectoEntity = proyectoRepository.findById(proyectoId)
+                .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
 
         if (!(rol.equalsIgnoreCase("SOCIO") || rol.equalsIgnoreCase("PRESIDENTE"))) {
             throw new IllegalArgumentException("Solo SOCIOS o PRESIDENTES pueden inscribirse a proyectos.");
         }
 
         if (proyectoEntity.getCupoMaximo() - proyectoEntity.getInscritos() <= 0) {
-            throw new  IllegalArgumentException("La proyecto no tiene cupo disponible.");
+            throw new IllegalArgumentException("El proyecto no tiene cupo disponible.");
         }
 
         boolean yaInscrito = inscripcionRepository.existsByUsuarioIdAndProyectoId(usuario.getId(), proyectoId);
@@ -128,13 +121,9 @@ public class InscripcionServiceImpl implements IInscripcionService {
             throw new IllegalArgumentException("Ya estás inscrito en este proyecto.");
         }
 
-        ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
-                .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
-
-
         InscripcionEntity inscripcion = InscripcionEntity.builder()
                 .usuario(usuario)
-                .proyecto(proyecto)
+                .proyecto(proyectoEntity)
                 .fechaRegistro(LocalDateTime.now())
                 .estado(InscripcionEntity.EstadoInscripcion.PENDIENTE)
                 .build();
@@ -154,27 +143,43 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
         insc.setEstado(InscripcionEntity.EstadoInscripcion.ACEPTADA);
 
-        // Si pertenece a una convocatoria → cambiar club y rol
+        // ---------------------------------------------
+        // 1. Si es de CONVOCATORIA
+        // ---------------------------------------------
         if (insc.getConvocatoria() != null) {
 
             UsuarioEntity usuario = insc.getUsuario();
             usuario.setClub(insc.getConvocatoria().getClub());
 
-            // Cambiar rol a SOCIO
             RolEntity rolSocio = rolRepository.findByNombre("SOCIO")
                     .orElseThrow(() -> new IllegalArgumentException("Rol SOCIO no encontrado."));
 
             usuario.setRol(rolSocio);
             usuarioRepository.save(usuario);
+
+            inscripcionRepository.save(insc);
+            return;
         }
 
-        ProyectoEntity proyectoEntity = proyectoRepository.findById(insc.getProyecto().getId()).orElseThrow(
-                () -> new IllegalArgumentException("Proyecto no encontrado.")
-        );
-        proyectoEntity.setInscritos(proyectoEntity.getInscritos() + 1);
+        // ---------------------------------------------
+        // 2. Si es de PROYECTO
+        // ---------------------------------------------
+        if (insc.getProyecto() != null) {
 
-        inscripcionRepository.save(insc);
-        proyectoRepository.save(proyectoEntity);
+            ProyectoEntity proyectoEntity = proyectoRepository.findById(insc.getProyecto().getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
+
+            proyectoEntity.setInscritos(proyectoEntity.getInscritos() + 1);
+
+            proyectoRepository.save(proyectoEntity);
+            inscripcionRepository.save(insc);
+            return;
+        }
+
+        // ---------------------------------------------
+        // 3. No pertenece a nada (error de integridad)
+        // ---------------------------------------------
+        throw new IllegalStateException("La inscripción no pertenece a ninguna convocatoria ni proyecto.");
     }
 
     // ---------------------------------------------------------------
@@ -187,14 +192,20 @@ public class InscripcionServiceImpl implements IInscripcionService {
         InscripcionEntity insc = inscripcionRepository.findById(inscripcionId)
                 .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada."));
 
-        ProyectoEntity proyectoEntity = proyectoRepository.findById(insc.getProyecto().getId()).orElseThrow(
-                () -> new IllegalArgumentException("Proyecto no encontrado.")
-        );
-        proyectoEntity.setInscritos(proyectoEntity.getInscritos() - 1);
-
         insc.setEstado(InscripcionEntity.EstadoInscripcion.RECHAZADA);
+
+        // Si es de PROYECTO, restar cupo
+        if (insc.getProyecto() != null) {
+
+            ProyectoEntity proyectoEntity = proyectoRepository.findById(insc.getProyecto().getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
+
+            proyectoEntity.setInscritos(proyectoEntity.getInscritos() - 1);
+
+            proyectoRepository.save(proyectoEntity);
+        }
+
         inscripcionRepository.save(insc);
-        proyectoRepository.save(proyectoEntity);
     }
 
     // ---------------------------------------------------------------
