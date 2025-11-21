@@ -20,16 +20,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/**
- * Manejador global de excepciones para la aplicación Rotaract D4465.
- *
- * Esta clase intercepta y transforma las excepciones lanzadas por los controladores
- * en respuestas JSON estandarizadas, de modo que el cliente reciba mensajes claros,
- * códigos HTTP coherentes y detalles útiles para depuración.
- *
- * Los errores más frecuentes (validación, autenticación, duplicados, etc.)
- * tienen su propio manejador. Solo los errores no previstos caen en el bloque 500.
- */
 @RestControllerAdvice
 @Hidden
 public class GlobalHandlerException {
@@ -39,9 +29,6 @@ public class GlobalHandlerException {
     // -------------------------------------------------------------------------
     // 401 - UNAUTHORIZED
     // -------------------------------------------------------------------------
-    /**
-     * Captura errores de autenticación (token inválido, credenciales incorrectas, etc.).
-     */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ExceptionResponseDto> handleAuthenticationException(AuthenticationException ex, HttpServletRequest request) {
         logger.warn("Error de autenticación: {}", ex.getMessage());
@@ -57,9 +44,6 @@ public class GlobalHandlerException {
     // -------------------------------------------------------------------------
     // 403 - FORBIDDEN
     // -------------------------------------------------------------------------
-    /**
-     * Captura intentos de acceso no autorizado por falta de permisos o roles.
-     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ExceptionResponseDto> handleAccessDeniedException(AccessDeniedException ex, HttpServletRequest request) {
         logger.warn("Acceso denegado: {}", ex.getMessage());
@@ -75,9 +59,6 @@ public class GlobalHandlerException {
     // -------------------------------------------------------------------------
     // 404 - NOT FOUND
     // -------------------------------------------------------------------------
-    /**
-     * Captura excepciones cuando una entidad solicitada no existe en la base de datos.
-     */
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ExceptionResponseDto> handleEntityNotFound(EntityNotFoundException ex, HttpServletRequest request) {
         logger.info("Recurso no encontrado: {}", ex.getMessage());
@@ -91,13 +72,8 @@ public class GlobalHandlerException {
     }
 
     // -------------------------------------------------------------------------
-    // 409 - CONFLICT (Restricciones de base de datos - Hibernate)
+    // 409 - CONFLICT (Hibernate)
     // -------------------------------------------------------------------------
-    /**
-     * Captura violaciones de restricciones de integridad a nivel de Hibernate,
-     * como duplicados en columnas con restricción UNIQUE (ejemplo: email).
-     * Se lanza antes de que la excepción sea envuelta en DataIntegrityViolationException.
-     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ExceptionResponseDto> handleConstraintViolationException(ConstraintViolationException ex, HttpServletRequest request) {
         logger.warn("Violación de restricción: {}", ex.getConstraintName());
@@ -105,13 +81,9 @@ public class GlobalHandlerException {
         String mensajeError = "La operación viola una restricción de datos.";
         if (ex.getConstraintName() != null) {
             String constraint = ex.getConstraintName().toLowerCase();
-            if (constraint.contains("email")) {
-                mensajeError = "El correo electrónico ya se encuentra registrado.";
-            } else if (constraint.contains("usuario") || constraint.contains("username")) {
-                mensajeError = "El nombre de usuario ya está en uso.";
-            } else if (constraint.contains("dni")) {
-                mensajeError = "El número de documento ya se encuentra registrado.";
-            }
+            if (constraint.contains("email")) mensajeError = "El correo electrónico ya se encuentra registrado.";
+            else if (constraint.contains("usuario") || constraint.contains("username")) mensajeError = "El nombre de usuario ya está en uso.";
+            else if (constraint.contains("dni")) mensajeError = "El número de documento ya se encuentra registrado.";
         }
 
         ExceptionResponseDto body = new ExceptionResponseDto(
@@ -124,12 +96,8 @@ public class GlobalHandlerException {
     }
 
     // -------------------------------------------------------------------------
-    // 409 - CONFLICT (Spring DataIntegrityViolation)
+    // 409 - CONFLICT (Spring)
     // -------------------------------------------------------------------------
-    /**
-     * Captura errores de integridad lanzados por Spring (ejemplo: valores duplicados).
-     * Este método es un respaldo en caso de que Hibernate no dispare su excepción interna.
-     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ExceptionResponseDto> handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
         logger.warn("Conflicto de integridad de datos: {}", ex.getMessage());
@@ -137,11 +105,8 @@ public class GlobalHandlerException {
         String mensajeError = "La operación viola una restricción de datos (valor duplicado).";
         if (ex.getMessage() != null) {
             String msg = ex.getMessage().toLowerCase();
-            if (msg.contains("email")) {
-                mensajeError = "El correo electrónico ya se encuentra registrado.";
-            } else if (msg.contains("username") || msg.contains("usuario")) {
-                mensajeError = "El nombre de usuario ya está en uso.";
-            }
+            if (msg.contains("email")) mensajeError = "El correo electrónico ya se encuentra registrado.";
+            else if (msg.contains("username") || msg.contains("usuario")) mensajeError = "El nombre de usuario ya está en uso.";
         }
 
         ExceptionResponseDto body = new ExceptionResponseDto(
@@ -154,12 +119,8 @@ public class GlobalHandlerException {
     }
 
     // -------------------------------------------------------------------------
-    // 400 - BAD REQUEST
+    // 400 - BAD REQUEST (Validación)
     // -------------------------------------------------------------------------
-    /**
-     * Captura errores de validación de DTOs con anotaciones @Valid.
-     * Devuelve el detalle de los campos con errores.
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ExceptionResponseDto> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<String> errors = ex.getFieldErrors()
@@ -180,13 +141,24 @@ public class GlobalHandlerException {
     }
 
     // -------------------------------------------------------------------------
-    // 500 - INTERNAL SERVER ERROR (Fallback)
+    // ⭐ 400 - BAD REQUEST (IllegalArgumentException)
     // -------------------------------------------------------------------------
-    /**
-     * Manejador de último recurso. Captura cualquier excepción no controlada
-     * por los bloques anteriores (NullPointerException, errores de lógica, etc.).
-     * Loguea el stack trace completo para diagnóstico.
-     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ExceptionResponseDto> handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
+        logger.warn("Error de negocio: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ExceptionResponseDto(
+                        LocalDate.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        List.of(ex.getMessage()),
+                        ex.getMessage()
+                )
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // 500 - INTERNAL SERVER ERROR
+    // -------------------------------------------------------------------------
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionResponseDto> handleGeneralException(Exception ex, HttpServletRequest request) {
         logger.error("Error interno del servidor no controlado:", ex);

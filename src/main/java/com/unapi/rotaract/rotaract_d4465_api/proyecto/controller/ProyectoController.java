@@ -57,6 +57,7 @@ public class ProyectoController {
         return ResponseEntity.ok(proyectoService.findById(id));
     }
 
+
     // ============================================================
     // LISTAR PROYECTOS POR PRESIDENTE - SOCIO
     // ============================================================
