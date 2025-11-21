@@ -2,8 +2,10 @@ package com.unapi.rotaract.rotaract_d4465_api.inscripcion.interfaces;
 
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.dtos.InscripcionResponseDto;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface IInscripcionService {
+
 
     // Convocatorias
     void inscribirseEnConvocatoria(Long convocatoriaId);

@@ -162,7 +162,7 @@ public class ProyectoController {
     }
 
     @GetMapping("/{proyectoId}/inscripciones")
-    @PreAuthorize("hasAnyRole('PRESIDENTE','REPRESENTANTE DISTRITAL')")
+    @PreAuthorize("hasAnyRole('PRESIDENTE','REPRESENTANTE DISTRITAL', 'SOCIO')")
     @Operation(summary = "Listar inscripciones", description = "Lista todas las inscripciones registradas para un proyecto.")
     public ResponseEntity<Page<InscripcionResponseDto>> listarInscripcionesProyecto(
             @PathVariable Long proyectoId,

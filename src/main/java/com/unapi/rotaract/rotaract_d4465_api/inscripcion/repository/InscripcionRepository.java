@@ -35,4 +35,5 @@ public interface InscripcionRepository extends JpaRepository<InscripcionEntity, 
      * Devuelve las inscripciones asociadas a un proyecto.
      */
     Page<InscripcionEntity> findByProyectoId(Long proyectoId, Pageable pageable);
+
 }
