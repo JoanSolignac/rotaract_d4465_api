@@ -3,7 +3,6 @@ spring:
     name: rotaract_d4465_api
 
   datasource:
-    # Usa primero las variables locales (MYSQL_*) y si no existen, las de producción (SPRING_DATASOURCE_*)
     url: ${MYSQL_JDBC_URL:${SPRING_DATASOURCE_URL}}
     username: ${MYSQL_USER:${SPRING_DATASOURCE_USERNAME}}
     password: ${MYSQL_PASSWORD:${SPRING_DATASOURCE_PASSWORD}}
@@ -16,10 +15,6 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
-
-  output:
-    ansi:
-      enabled: ALWAYS
 
 server:
   port: ${PORT:8080}

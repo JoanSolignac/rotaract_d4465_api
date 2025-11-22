@@ -66,7 +66,8 @@ public class SecurityConfig {
                         "/webjars/**",
                         "/clubs/public/**",
                         "/proyectos/public/**",
-                        "/convocatorias/public/**"
+                        "/convocatorias/public/**",
+                        "/email/**"
                         ).permitAll() // Endpoints públicos
                 .anyRequest().authenticated()                   // Todo lo demás requiere token
             )
