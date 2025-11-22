@@ -2,6 +2,8 @@ package com.unapi.rotaract.rotaract_d4465_api.convocatoria.repository;
 
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.entity.ConvocatoriaEntity;
 import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -27,6 +29,15 @@ public interface ConvocatoriaRepository extends JpaRepository<ConvocatoriaEntity
      * @return lista de convocatorias pertenecientes al club indicado
      */
     List<ConvocatoriaEntity> findByClubId(Long clubId);
+
+    /**
+     * Recupera una página de convocatorias asociadas a un club específico.
+     *
+     * @param clubId   identificador del club creador
+     * @param pageable información de paginación
+     * @return página de convocatorias pertenecientes al club indicado
+     */
+    Page<ConvocatoriaEntity> findByClubId(Long clubId, Pageable pageable);
 
     /**
      * Obtiene todas las convocatorias que presenten un estado determinado.

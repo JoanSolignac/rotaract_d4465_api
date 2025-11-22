@@ -1,4 +1,4 @@
-package com.unapi.rotaract.rotaract_d4465_api.proyecto.schedule;
+package com.unapi.rotaract.rotaract_d4465_api.proyecto.schelude;
 
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.entity.ProyectoEntity;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.entity.ProyectoEntity.EstadoProyecto;
@@ -15,17 +15,19 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Servicio encargado de gestionar la actualización automática del estado
- * de los proyectos según las fechas registradas en su ciclo de vida.
+ * Scheduler encargado de actualizar automáticamente el estado de los proyectos
+ * de acuerdo con sus fechas de postulación y ejecución.
  *
- * Este componente evalúa diariamente la fase en la que se encuentra cada
- * proyecto y ajusta su estado conforme a las reglas definidas:
- * - PROPUESTO: etapa previa al inicio de postulaciones.
- * - EN_POSTULACION: mientras la fecha actual se encuentre dentro del periodo de postulación.
- * - EN_EJECUCION: cuando ha iniciado la ejecución del proyecto.
- * - FINALIZADO: al concluir la fecha final de ejecución.
+ * Estados manejados:
+ * - PROPUESTO: antes del inicio de postulación.
+ * - EN_POSTULACION: dentro del rango de postulación.
+ * - EN_EJECUCION: cuando el proyecto ya inició su ejecución.
+ * - FINALIZADO: si terminó la fecha fin de ejecución.
  *
- * Los proyectos en estado CANCELADO o FINALIZADO no son modificados.
+ * Los estados CANCELADO y FINALIZADO no se modifican.
+ *
+ * Este scheduler NO maneja asistencias todavía. Ese módulo se integrará
+ * en el siguiente paso sin romper esta lógica.
  */
 @Slf4j
 @Service
@@ -34,50 +36,50 @@ public class ProyectoScheduleService {
 
     private final ProyectoRepository proyectoRepository;
 
-    /**
-     * Analiza y actualiza el estado de todos los proyectos del sistema.
-     * Se ejecuta diariamente a medianoche utilizando la zona horaria
-     * America/Lima para mantener consistencia con la operación regional.
-     *
-     * Proceso:
-     * 1. Recupera todos los proyectos registrados.
-     * 2. Evalúa la fecha actual respecto a sus fechas de postulación
-     *    y ejecución.
-     * 3. Actualiza el estado según corresponda.
-     * 4. Omite proyectos ya cancelados o finalizados.
-     * 5. Persiste los cambios de manera transaccional.
-     *
-     * Cron: 0 0 0 * * *  — ejecución diaria a las 00:00.
-     */
     @Transactional
     @Scheduled(cron = "0 0 0 * * *", zone = "America/Lima")
     public void actualizarEstados() {
 
         LocalDate hoy = LocalDate.now();
-
         List<ProyectoEntity> proyectos = proyectoRepository.findAll();
 
         for (ProyectoEntity p : proyectos) {
 
-            if (p.getEstadoProyecto() == EstadoProyecto.CANCELADO ||
-                    p.getEstadoProyecto() == EstadoProyecto.FINALIZADO)
+            EstadoProyecto estadoActual = p.getEstadoProyecto();
+
+            // No tocar proyectos ya cancelados o finalizados
+            if (estadoActual == EstadoProyecto.CANCELADO ||
+                    estadoActual == EstadoProyecto.FINALIZADO) {
                 continue;
+            }
 
-            if (hoy.isBefore(p.getFechaInicioPostulacion()))
+            // 1. Antes de la postulación → PROPUESTO
+            if (hoy.isBefore(p.getFechaInicioPostulacion())) {
                 p.setEstadoProyecto(EstadoProyecto.PROPUESTO);
+                continue;
+            }
 
-            else if (!hoy.isAfter(p.getFechaFinPostulacion()))
+            // 2. Dentro del periodo de postulación → EN_POSTULACION
+            if (!hoy.isAfter(p.getFechaFinPostulacion())) {
                 p.setEstadoProyecto(EstadoProyecto.EN_POSTULACION);
+                continue;
+            }
 
-            else if (!hoy.isBefore(p.getFechaInicioProyecto()))
+            // 3. Periodo de ejecución → EN_EJECUCION
+            if (!hoy.isBefore(p.getFechaInicioProyecto()) &&
+                    !hoy.isAfter(p.getFechaFinProyecto())) {
                 p.setEstadoProyecto(EstadoProyecto.EN_EJECUCION);
+                continue;
+            }
 
-            if (hoy.isAfter(p.getFechaFinProyecto()))
+            // 4. Proyecto terminado → FINALIZADO
+            if (hoy.isAfter(p.getFechaFinProyecto())) {
                 p.setEstadoProyecto(EstadoProyecto.FINALIZADO);
+                continue;
+            }
         }
 
         proyectoRepository.saveAll(proyectos);
-
         log.info("Scheduler: estados de proyectos actualizados correctamente.");
     }
 }

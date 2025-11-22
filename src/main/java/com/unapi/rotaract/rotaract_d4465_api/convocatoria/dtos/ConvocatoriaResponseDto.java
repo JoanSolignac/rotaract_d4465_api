@@ -3,15 +3,7 @@ package com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos;
 import java.time.LocalDate;
 
 /**
- * Representación de salida utilizada para exponer los datos completos de una convocatoria.
- * Este DTO concentra la información relevante para su visualización en interfaces públicas
- * o administrativas, incluyendo datos descriptivos, fechas clave, cupo disponible y metadatos
- * del club que la creó.
- *
- * Propósito:
- * - Estandarizar la estructura de respuesta enviada por la API.
- * - Evitar exponer directamente las entidades del dominio.
- * - Proveer una vista consolidada sin información sensible.
+ * DTO de salida para convocatorias.
  */
 public record ConvocatoriaResponseDto(
         Long id,

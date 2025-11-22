@@ -16,45 +16,34 @@ import org.springframework.transaction.annotation.Transactional;
 public interface IProyectoService {
 
     /**
-     * Recupera una lista paginada de proyectos.
-     * Permite controlar el número de elementos consultados y el desplazamiento
-     * dentro del conjunto total de registros.
-     *
-     * @param page número de página (0-based)
-     * @param size cantidad máxima de elementos por página
-     * @return página de proyectos representados como {@link ProyectoResponseDto}
+     * Recupera una lista paginada de todos los proyectos.
      */
     Page<ProyectoResponseDto> findAll(int page, int size);
 
+    /**
+     * Lista los proyectos del club de un SOCIO o PRESIDENTE.
+     */
     Page<ProyectoResponseDto> findAllBySocioPresidente(int page, int size);
 
     /**
-     * Obtiene los datos de un proyecto específico identificado por su ID.
-     * En caso de no existir, la implementación deberá gestionar la excepción.
-     *
-     * @param id identificador del proyecto
-     * @return representación pública del proyecto
+     * Lista proyectos que el usuario actual NO ha inscrito.
+     * — Solo aplica para SOCIO y PRESIDENTE.
+     * — Permite mostrar únicamente los proyectos nuevos/disponibles.
+     */
+    Page<ProyectoResponseDto> findDisponiblesParaUsuario(int page, int size);
+
+    /**
+     * Obtiene los datos de un proyecto por su ID.
      */
     ProyectoResponseDto findById(Long id);
 
     /**
-     * Registra un nuevo proyecto dentro del sistema.
-     * La implementación valida los datos y gestiona las reglas de negocio
-     * asociadas al ciclo de vida del proyecto.
-     *
-     * @param dto datos requeridos para crear un nuevo proyecto
-     * @return información del proyecto recién creado
+     * Crea un nuevo proyecto.
      */
     ProyectoResponseDto create(ProyectoCreateRequestDto dto);
 
     /**
-     * Actualiza parcialmente un proyecto ya existente. Sólo se modifican
-     * los campos proporcionados en el DTO, manteniendo sin cambios
-     * aquellos que se envíen como null.
-     *
-     * @param id identificador del proyecto a actualizar
-     * @param dto datos editables del proyecto
-     * @return representación del proyecto luego de la actualización
+     * Actualiza parcialmente un proyecto existente.
      */
     ProyectoResponseDto update(Long id, ProyectoEditRequestDto dto);
 
@@ -71,7 +60,7 @@ public interface IProyectoService {
     void finalizarProyecto(Long id);
 
     // ======================================================
-    // =            BUSCAR POR TÍTULO                       =
+    // =               BUSCAR POR TÍTULO                    =
     // ======================================================
     Page<ProyectoResponseDto> buscarPorTitulo(String titulo, int page, int size);
 }

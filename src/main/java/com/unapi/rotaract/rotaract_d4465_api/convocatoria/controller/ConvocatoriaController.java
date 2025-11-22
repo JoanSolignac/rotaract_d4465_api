@@ -45,23 +45,36 @@ public class ConvocatoriaController {
     @GetMapping("/public")
     @Operation(
             summary = "Listar convocatorias públicas",
-            description = "Devuelve una página de convocatorias accesibles públicamente."
+            description = "Devuelve una página de convocatorias visibles públicamente."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Listado obtenido correctamente",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ConvocatoriaResponseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Parámetros inválidos",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
-    public ResponseEntity<Page<ConvocatoriaResponseDto>> listarConvocatorias(
-            @Valid @RequestParam(defaultValue = "0")
-            @Parameter(description = "Número de página (0-based)") int page,
+    public ResponseEntity<Page<ConvocatoriaResponseDto>> listarConvocatoriasPublicas(
+            @Parameter(description = "Número de página (0-based)")
+            @RequestParam(defaultValue = "0") int page,
 
-            @RequestParam(defaultValue = "10")
-            @Parameter(description = "Cantidad de resultados por página") int size
+            @Parameter(description = "Cantidad de resultados por página")
+            @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(convocatoriaService.findAll(page, size));
+    }
+
+    // =====================================================================
+    // LISTAR DISPONIBLES PARA INTERESADO
+    // =====================================================================
+
+    @GetMapping("/public/disponibles")
+    @PreAuthorize("hasRole('INTERESADO')")
+    @Operation(
+            summary = "Listar convocatorias disponibles",
+            description = "Devuelve únicamente las convocatorias activas donde el usuario no está inscrito."
+    )
+    public ResponseEntity<Page<ConvocatoriaResponseDto>> listarConvocatoriasDisponibles(
+            @Parameter(description = "Número de página (0-based)")
+            @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Cantidad de resultados por página")
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(convocatoriaService.findDisponiblesParaInteresado(page, size));
     }
 
     // =====================================================================
@@ -72,20 +85,14 @@ public class ConvocatoriaController {
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(
             summary = "Listar convocatorias del presidente",
-            description = "Devuelve una página de convocatorias del club del presidente autenticado."
+            description = "Devuelve una página de convocatorias asociadas al club del presidente autenticado."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Listado obtenido correctamente",
-                    content = @Content(schema = @Schema(implementation = ConvocatoriaResponseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Parámetros inválidos",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
     public ResponseEntity<Page<ConvocatoriaResponseDto>> listarConvocatoriasPresidente(
-            @Valid @RequestParam(defaultValue = "0")
-            @Parameter(description = "Número de página (0-based)") int page,
+            @Parameter(description = "Número de página (0-based)")
+            @RequestParam(defaultValue = "0") int page,
 
-            @RequestParam(defaultValue = "10")
-            @Parameter(description = "Cantidad de resultados por página") int size
+            @Parameter(description = "Cantidad de resultados por página")
+            @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(convocatoriaService.findAllByPresidente(page, size));
     }
@@ -96,16 +103,10 @@ public class ConvocatoriaController {
 
     @GetMapping("/public/{id}")
     @Operation(
-            summary = "Obtener convocatoria pública por ID",
-            description = "Devuelve los datos de una convocatoria accesible públicamente."
+            summary = "Obtener convocatoria por ID",
+            description = "Devuelve información pública de una convocatoria."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Convocatoria encontrada",
-                    content = @Content(schema = @Schema(implementation = ConvocatoriaResponseDto.class))),
-            @ApiResponse(responseCode = "404", description = "Convocatoria no encontrada",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
-    public ResponseEntity<ConvocatoriaResponseDto> obtenerConvocatoria(
+    public ResponseEntity<ConvocatoriaResponseDto> obtenerConvocatoriaPublica(
             @Parameter(description = "Identificador único de la convocatoria", required = true)
             @PathVariable Long id
     ) {
@@ -122,15 +123,9 @@ public class ConvocatoriaController {
             summary = "Crear convocatoria",
             description = "Registra una nueva convocatoria. Solo disponible para PRESIDENTE."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Convocatoria creada exitosamente",
-                    content = @Content(schema = @Schema(implementation = ConvocatoriaResponseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Datos inválidos",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
     public ResponseEntity<ConvocatoriaResponseDto> crearConvocatoria(
             @Valid @RequestBody
-            @Parameter(description = "Datos para la creación de la convocatoria", required = true)
+            @Parameter(description = "Datos para crear convocatoria", required = true)
             ConvocatoriaCreateRequestDto dto
     ) {
         return ResponseEntity.ok(convocatoriaService.create(dto));
@@ -144,20 +139,14 @@ public class ConvocatoriaController {
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(
             summary = "Editar convocatoria",
-            description = "Actualiza parcialmente los campos de una convocatoria existente. Solo PRESIDENTE."
+            description = "Actualiza parcialmente una convocatoria. Solo PRESIDENTE."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Convocatoria actualizada",
-                    content = @Content(schema = @Schema(implementation = ConvocatoriaResponseDto.class))),
-            @ApiResponse(responseCode = "404", description = "Convocatoria no encontrada",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
     public ResponseEntity<ConvocatoriaResponseDto> editarConvocatoria(
-            @Parameter(description = "ID de la convocatoria a editar", required = true)
+            @Parameter(description = "ID de la convocatoria", required = true)
             @PathVariable Long id,
 
             @Valid @RequestBody
-            @Parameter(description = "Datos a modificar en la convocatoria") ConvocatoriaEditRequestDto dto
+            @Parameter(description = "Campos editables") ConvocatoriaEditRequestDto dto
     ) {
         return ResponseEntity.ok(convocatoriaService.update(id, dto));
     }
@@ -169,44 +158,36 @@ public class ConvocatoriaController {
     @PostMapping("/{convocatoriaId}/inscribirse")
     @PreAuthorize("hasRole('INTERESADO')")
     @Operation(
-            summary = "Inscribirse en una convocatoria",
-            description = "Registra la inscripción del usuario autenticado en la convocatoria seleccionada."
+            summary = "Inscribirse a convocatoria",
+            description = "Registra la inscripción del usuario autenticado."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Inscripción registrada correctamente"),
-            @ApiResponse(responseCode = "400", description = "Error al registrar la inscripción",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
     public ResponseEntity<String> inscribirseEnConvocatoria(
             @Parameter(description = "ID de la convocatoria", required = true)
             @PathVariable Long convocatoriaId
     ) {
         inscripcionService.inscribirseEnConvocatoria(convocatoriaId);
-        return ResponseEntity.ok("La inscripción se ha registrado correctamente.");
+        return ResponseEntity.ok("Inscripción registrada correctamente.");
     }
 
     // =====================================================================
-    // LISTAR INSCRIPCIONES (PRESIDENTE / REPRESENTANTE)
+    // LISTAR INSCRIPCIONES (PRESIDENTE / DISTRITAL)
     // =====================================================================
 
     @GetMapping("/{convocatoriaId}/inscripciones")
     @PreAuthorize("hasAnyRole('PRESIDENTE','REPRESENTANTE DISTRITAL')")
     @Operation(
             summary = "Listar inscripciones de una convocatoria",
-            description = "Devuelve una página con las inscripciones asociadas a la convocatoria seleccionada."
+            description = "Devuelve una página de inscripciones asociadas a la convocatoria."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Listado obtenido correctamente"),
-    })
     public ResponseEntity<Page<InscripcionResponseDto>> listarInscripcionesConvocatoria(
             @Parameter(description = "ID de la convocatoria", required = true)
             @PathVariable Long convocatoriaId,
 
-            @RequestParam(defaultValue = "0")
-            @Parameter(description = "Página solicitada") int page,
+            @Parameter(description = "Página solicitada")
+            @RequestParam(defaultValue = "0") int page,
 
-            @RequestParam(defaultValue = "10")
-            @Parameter(description = "Tamaño de página") int size
+            @Parameter(description = "Tamaño de página")
+            @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(
                 inscripcionService.listarInscripcionesConvocatoria(convocatoriaId, page, size)
@@ -221,20 +202,17 @@ public class ConvocatoriaController {
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(
             summary = "Aceptar inscripción",
-            description = "Aprueba una inscripción asociada a la convocatoria seleccionada."
+            description = "Aprueba una inscripción asociada a la convocatoria."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Inscripción aceptada correctamente")
-    })
-    public ResponseEntity<String> aceptarInscripcionConvocatoria(
-            @Parameter(description = "ID de la convocatoria", required = true)
+    public ResponseEntity<String> aceptarInscripcion(
+            @Parameter(description = "ID de la convocatoria")
             @PathVariable Long convocatoriaId,
 
-            @Parameter(description = "ID de la inscripción a aprobar", required = true)
+            @Parameter(description = "ID de la inscripción a aprobar")
             @PathVariable Long inscripcionId
     ) {
         inscripcionService.aceptarInscripcion(inscripcionId);
-        return ResponseEntity.ok("La inscripción ha sido aceptada correctamente.");
+        return ResponseEntity.ok("Inscripción aceptada correctamente.");
     }
 
     // =====================================================================
@@ -245,19 +223,16 @@ public class ConvocatoriaController {
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(
             summary = "Rechazar inscripción",
-            description = "Rechaza una inscripción asociada a la convocatoria seleccionada."
+            description = "Rechaza una inscripción asociada a la convocatoria."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Inscripción rechazada correctamente")
-    })
-    public ResponseEntity<String> rechazarInscripcionConvocatoria(
-            @Parameter(description = "ID de la convocatoria", required = true)
+    public ResponseEntity<String> rechazarInscripcion(
+            @Parameter(description = "ID de la convocatoria")
             @PathVariable Long convocatoriaId,
 
-            @Parameter(description = "ID de la inscripción a rechazar", required = true)
+            @Parameter(description = "ID de la inscripción a rechazar")
             @PathVariable Long inscripcionId
     ) {
         inscripcionService.rechazarInscripcion(inscripcionId);
-        return ResponseEntity.ok("La inscripción ha sido rechazada correctamente.");
+        return ResponseEntity.ok("Inscripción rechazada correctamente.");
     }
 }

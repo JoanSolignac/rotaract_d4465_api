@@ -1,11 +1,13 @@
 package com.unapi.rotaract.rotaract_d4465_api.auth.entity;
 
+import com.unapi.rotaract.rotaract_d4465_api.asistencia.entity.AsistenciaEntity;
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.entity.InscripcionEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -96,4 +98,13 @@ public class UsuarioEntity {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<InscripcionEntity> inscripciones;
+
+    @OneToMany(
+            mappedBy = "usuario",
+            fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<AsistenciaEntity> asistencias = new ArrayList<>();
+
 }

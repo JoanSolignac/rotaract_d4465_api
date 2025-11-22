@@ -3,6 +3,7 @@ package com.unapi.rotaract.rotaract_d4465_api.proyecto.service;
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
 import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
+import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.dtos.ProyectoCreateRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.dtos.ProyectoEditRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.dtos.ProyectoResponseDto;
@@ -32,28 +33,30 @@ public class ProyectoServiceImpl implements IProyectoService {
 
     private final ProyectoRepository proyectoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final InscripcionRepository inscripcionRepository;
 
-    /**
-     * Recupera una página de proyectos existentes en el sistema.
-     * Permite obtener bloques de información paginada para optimizar consultas.
-     */
+    // ============================================================
+    // LISTAR TODOS LOS PROYECTOS
+    // ============================================================
+
     @Override
     public Page<ProyectoResponseDto> findAll(int page, int size) {
         return proyectoRepository.findAll(PageRequest.of(page, size))
-                .map(this::mapToResponse);
+                .map(p -> mapToResponse(p, false));
     }
+
+    // ============================================================
+    // LISTAR PROYECTOS DEL CLUB DEL USUARIO (SOCIO / PRESIDENTE)
+    // ============================================================
 
     @Override
     public Page<ProyectoResponseDto> findAllBySocioPresidente(int page, int size) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String correo = auth.getName();
 
-        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
+        UsuarioEntity usuario = getUsuarioAutenticado();
 
         List<ProyectoResponseDto> proyectos = proyectoRepository.findByClubId(usuario.getClub().getId())
                 .stream()
-                .map(this::mapToResponse)
+                .map(p -> mapToResponse(p, false))
                 .toList();
 
         return new PageImpl<>(
@@ -63,31 +66,54 @@ public class ProyectoServiceImpl implements IProyectoService {
         );
     }
 
-    /**
-     * Obtiene la información completa de un proyecto mediante su identificador.
-     * Si no existe, se informa al usuario mediante una excepción controlada.
-     */
+    // ============================================================
+    // LISTAR PROYECTOS DISPONIBLES PARA EL USUARIO (NO INSCRITOS)
+    // ============================================================
+
+    @Override
+    public Page<ProyectoResponseDto> findDisponiblesParaUsuario(int page, int size) {
+
+        UsuarioEntity usuario = getUsuarioAutenticado();
+        Long clubId = usuario.getClub().getId();
+
+        Page<ProyectoEntity> proyectosClub =
+                new PageImpl<>(proyectoRepository.findByClubId(clubId),
+                        PageRequest.of(page, size),
+                        proyectoRepository.findByClubId(clubId).size()
+                );
+
+        List<ProyectoResponseDto> disponibles = proyectosClub.stream()
+                .filter(p -> !inscripcionRepository.existsByUsuarioIdAndProyectoId(usuario.getId(), p.getId()))
+                .map(p -> mapToResponse(p, true)) // disponible = true
+                .toList();
+
+        return new PageImpl<>(
+                disponibles,
+                PageRequest.of(page, size),
+                disponibles.size()
+        );
+    }
+
+    // ============================================================
+    // BUSCAR POR ID
+    // ============================================================
+
     @Override
     public ProyectoResponseDto findById(Long id) {
         ProyectoEntity entity = proyectoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proyecto no encontrado."));
-        return mapToResponse(entity);
+        return mapToResponse(entity, false);
     }
 
-    /**
-     * Registra un nuevo proyecto en el sistema. El usuario autenticado debe
-     * pertenecer a un club, el cual se asigna automáticamente al proyecto.
-     * La operación respeta las reglas básicas del ciclo de vida del proyecto.
-     */
+    // ============================================================
+    // CREAR
+    // ============================================================
+
     @Override
     @Transactional
     public ProyectoResponseDto create(ProyectoCreateRequestDto dto) {
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String correo = auth.getName();
-
-        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
+        UsuarioEntity usuario = getUsuarioAutenticado();
 
         if (usuario.getClub() == null)
             throw new RuntimeException("El usuario no tiene un club asignado.");
@@ -111,16 +137,19 @@ public class ProyectoServiceImpl implements IProyectoService {
         proyecto.setFechaFinProyecto(dto.fechaFinProyecto());
         proyecto.setEstadoProyecto(ProyectoEntity.EstadoProyecto.EN_POSTULACION);
 
+        // Nuevos campos — asistencia desactivada al crear
+        proyecto.setAsistenciaActiva(false);
+        proyecto.setAsistenciaCerrada(false);
+
         proyectoRepository.save(proyecto);
 
-        return mapToResponse(proyecto);
+        return mapToResponse(proyecto, false);
     }
 
-    /**
-     * Actualiza parcialmente los datos de un proyecto existente.
-     * Solo los campos presentes en el DTO serán modificados, manteniendo
-     * intactos aquellos que no hayan sido enviados.
-     */
+    // ============================================================
+    // EDITAR
+    // ============================================================
+
     @Override
     @Transactional
     public ProyectoResponseDto update(Long id, ProyectoEditRequestDto dto) {
@@ -141,13 +170,13 @@ public class ProyectoServiceImpl implements IProyectoService {
 
         proyectoRepository.save(p);
 
-        return mapToResponse(p);
+        return mapToResponse(p, false);
     }
 
-    /**
-     * Cancela un proyecto existente, estableciendo su estado general
-     * y su estado específico del ciclo de vida como cancelado.
-     */
+    // ============================================================
+    // CANCELAR PROYECTO
+    // ============================================================
+
     @Override
     @Transactional
     public void cancelarProyecto(Long id) {
@@ -156,14 +185,15 @@ public class ProyectoServiceImpl implements IProyectoService {
 
         p.setEstado(EventoEntity.EstadoEvento.CANCELADO);
         p.setEstadoProyecto(ProyectoEntity.EstadoProyecto.CANCELADO);
+        p.cerrarAsistencia();
 
         proyectoRepository.save(p);
     }
 
-    /**
-     * Marca un proyecto como finalizado, indicando que su ciclo de vida
-     * ha concluido correctamente y cerrando su estado de evento.
-     */
+    // ============================================================
+    // FINALIZAR PROYECTO
+    // ============================================================
+
     @Override
     @Transactional
     public void finalizarProyecto(Long id) {
@@ -172,26 +202,27 @@ public class ProyectoServiceImpl implements IProyectoService {
 
         p.setEstado(EventoEntity.EstadoEvento.CERRADO);
         p.setEstadoProyecto(ProyectoEntity.EstadoProyecto.FINALIZADO);
+        p.cerrarAsistencia();
 
         proyectoRepository.save(p);
     }
 
-    /**
-     * Busca proyectos que contengan cierta cadena en su título, sin diferenciar
-     * entre mayúsculas y minúsculas. Devuelve los resultados paginados.
-     */
+    // ============================================================
+    // BUSCAR POR TÍTULO
+    // ============================================================
+
     @Override
     public Page<ProyectoResponseDto> buscarPorTitulo(String titulo, int page, int size) {
         return proyectoRepository
                 .findByTituloContainingIgnoreCase(titulo, PageRequest.of(page, size))
-                .map(this::mapToResponse);
+                .map(p -> mapToResponse(p, false));
     }
 
-    /**
-     * Convierte una entidad de proyecto en una estructura DTO preparada para
-     * la exposición pública mediante la API, evitando exponer entidades internas.
-     */
-    private ProyectoResponseDto mapToResponse(ProyectoEntity e) {
+    // ============================================================
+    // MAPPER
+    // ============================================================
+
+    private ProyectoResponseDto mapToResponse(ProyectoEntity e, boolean disponible) {
 
         return ProyectoResponseDto
                 .builder()
@@ -210,7 +241,18 @@ public class ProyectoServiceImpl implements IProyectoService {
                 .clubId(e.getClub() != null ? e.getClub().getId() : null)
                 .clubNombre(e.getClub() != null ? e.getClub().getNombre() : null)
                 .inscritos(e.getInscritos())
+                .disponible(disponible)
                 .build();
+    }
 
+    // ============================================================
+    // UTILIDAD
+    // ============================================================
+
+    private UsuarioEntity getUsuarioAutenticado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = auth.getName();
+        return usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado."));
     }
 }

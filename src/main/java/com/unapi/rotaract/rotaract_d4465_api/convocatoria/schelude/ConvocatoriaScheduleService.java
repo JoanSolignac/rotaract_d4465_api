@@ -3,6 +3,7 @@ package com.unapi.rotaract.rotaract_d4465_api.convocatoria.schelude;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.entity.ConvocatoriaEntity;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.repository.ConvocatoriaRepository;
 import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,14 +15,15 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Servicio responsable de ejecutar la tarea programada que administra el ciclo
- * de vida de las convocatorias. Evalúa diariamente la vigencia de las mismas
- * según su fecha de cierre y actualiza su estado a INACTIVO cuando corresponde.
+ * Servicio encargado de administrar automáticamente el ciclo de vida
+ * de las convocatorias según sus fechas de cierre.
  *
- * Características:
- * - Frecuencia diaria a medianoche.
- * - Procesamiento transaccional para evitar estados parciales.
- * - Basado únicamente en el atributo "estado" definido en {@link EventoEntity}.
+ * Todas las convocatorias cuyo estado es ACTIVO y cuya fecha de cierre ya pasó,
+ * serán marcadas como CERRADO.
+ *
+ * La tarea se ejecuta:
+ * - Una vez al día a las 00:00 (medianoche)
+ * - Zona horaria: America/Lima
  */
 @Slf4j
 @Service
@@ -31,37 +33,41 @@ public class ConvocatoriaScheduleService {
     private final ConvocatoriaRepository convocatoriaRepository;
 
     /**
-     * Desactiva convocatorias vencidas mediante la actualización de su estado
-     * a INACTIVO. El proceso identifica convocatorias cuyo estado actual es ACTIVO
-     * y cuya fecha de cierre ya fue superada por la fecha del sistema.
+     * Tarea programada que desactiva automáticamente convocatorias vencidas.
      *
-     * Cron:
-     * - Expresión: 0 0 0 * * * (ejecución diaria a las 00:00).
-     * - Zona horaria: America/Lima.
+     * Reglas:
+     * - Solo se toman convocatorias con estado ACTIVO.
+     * - Si la fecha de cierre es antes de la fecha actual, se marcan como CERRADO.
      */
     @Transactional
     @Scheduled(cron = "0 0 0 * * *", zone = "America/Lima")
-    public void deactivateExpiredConvocatorias() {
+    public void cerrarConvocatoriasVencidas() {
 
-        LocalDate today = LocalDate.now();
+        LocalDate hoy = LocalDate.now();
 
-        // Recupera todas las convocatorias activas
+        // 1. Obtener todas las convocatorias activas
         List<ConvocatoriaEntity> activas =
                 convocatoriaRepository.findByEstado(EventoEntity.EstadoEvento.ACTIVO);
 
-        // Filtra las vencidas
-        List<ConvocatoriaEntity> vencidas = activas.stream()
-                .filter(c -> c.getFechaCierre().isBefore(today))
-                .toList();
-
-        if (vencidas.isEmpty()) {
-            log.info("No se encontraron convocatorias vencidas para desactivar.");
+        if (activas.isEmpty()) {
+            log.info("[ConvocatoriaScheduler] No hay convocatorias activas para revisar.");
             return;
         }
 
+        // 2. Filtrar convocatorias cuyo periodo de postulación ya terminó
+        List<ConvocatoriaEntity> vencidas = activas.stream()
+                .filter(c -> c.getFechaCierre().isBefore(hoy))
+                .toList();
+
+        if (vencidas.isEmpty()) {
+            log.info("[ConvocatoriaScheduler] No hay convocatorias vencidas para cerrar en esta ejecución.");
+            return;
+        }
+
+        // 3. Marcar como cerradas
         vencidas.forEach(c -> c.setEstado(EventoEntity.EstadoEvento.CERRADO));
         convocatoriaRepository.saveAll(vencidas);
 
-        log.info("Convocatorias desactivadas por vencimiento: {}", vencidas.size());
+        log.info("[ConvocatoriaScheduler] Convocatorias cerradas automáticamente: {}", vencidas.size());
     }
 }

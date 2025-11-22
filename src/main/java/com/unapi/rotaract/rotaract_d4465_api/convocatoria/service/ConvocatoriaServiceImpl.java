@@ -10,6 +10,8 @@ import com.unapi.rotaract.rotaract_d4465_api.convocatoria.entity.ConvocatoriaEnt
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.interfaces.IConvocatoriaService;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.repository.ConvocatoriaRepository;
 import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
+import com.unapi.rotaract.rotaract_d4465_api.inscripcion.entity.InscripcionEntity;
+import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,15 +22,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
  * Servicio responsable de gestionar el ciclo de vida de las convocatorias.
- * Incluye operaciones de creación, consulta, edición y validación de
- * reglas temporales asociadas al proceso de postulación.
- *
- * El club asociado a la convocatoria se obtiene automáticamente desde
- * el usuario autenticado, evitando parámetros manipulables.
  */
 @Service
 @RequiredArgsConstructor
@@ -36,88 +34,130 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
 
     private final ConvocatoriaRepository convocatoriaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final InscripcionRepository inscripcionRepository;
 
-    /**
-     * Recupera una lista paginada de convocatorias.
-     *
-     * @param page índice de página (0-based)
-     * @param size tamaño máximo de elementos por página
-     * @return página con {@link ConvocatoriaResponseDto}
-     * @throws IllegalArgumentException si el tamaño de página es inválido
-     */
+    // ============================================================
+    // LISTADO GENERAL
+    // ============================================================
+
     @Override
     @Transactional(readOnly = true)
     public Page<ConvocatoriaResponseDto> findAll(int page, int size) {
-
-        if (size <= 0) {
-            throw new IllegalArgumentException("El tamaño de página debe ser mayor que 0.");
-        }
-
         return convocatoriaRepository.findAll(PageRequest.of(page, size))
                 .map(this::mapToResponse);
     }
 
+    // ============================================================
+    // LISTADO SOLO DEL PRESIDENTE
+    // ============================================================
+
     @Override
+    @Transactional(readOnly = true)
     public Page<ConvocatoriaResponseDto> findAllByPresidente(int page, int size) {
 
-        String correo =  SecurityContextHolder.getContext().getAuthentication().getName();
-        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo).orElseThrow(
-                () -> new IllegalStateException("Usuario autenticado no encontrado.")
-        );
+        String correo = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new IllegalStateException("Usuario autenticado no encontrado."));
 
         ClubEntity club = usuario.getClub();
-        List<ConvocatoriaResponseDto> convocatoriaEntityList = convocatoriaRepository.findByClubId(club.getId()).stream()
+        if (club == null) {
+            throw new IllegalStateException("El usuario no pertenece a ningún club.");
+        }
+
+        return convocatoriaRepository.findByClubId(club.getId(), PageRequest.of(page, size))
+                .map(this::mapToResponse);
+    }
+
+    // ============================================================
+    // NUEVO: LISTAR DISPONIBLES PARA INTERESADO
+    // ============================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ConvocatoriaResponseDto> findDisponiblesParaInteresado(int page, int size) {
+
+        String correo = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new IllegalStateException("Usuario autenticado no encontrado."));
+
+        Long userId = usuario.getId();
+        LocalDate hoy = LocalDate.now();
+
+        // 1. Obtener convocatorias ACTIVAS y en fecha de postulación
+        List<ConvocatoriaEntity> activas = convocatoriaRepository
+                .findByEstado(EventoEntity.EstadoEvento.ACTIVO)
+                .stream()
+                .filter(c -> !hoy.isBefore(c.getFechaInicioPostulacion()) &&
+                        !hoy.isAfter(c.getFechaFinPostulacion()))
+                .toList();
+
+        // 2. Obtener IDs de convocatorias donde el usuario YA está inscrito
+        List<Long> idsInscritos = inscripcionRepository
+                .findByUsuarioId(userId)
+                .stream()
+                .filter(i -> i.getConvocatoria() != null)
+                .filter(i ->
+                        i.getEstado() == InscripcionEntity.EstadoInscripcion.PENDIENTE ||
+                                i.getEstado() == InscripcionEntity.EstadoInscripcion.ACEPTADA
+                )
+                .map(i -> i.getConvocatoria().getId())
+                .toList();
+
+        // 3. Filtrar convocatorias donde NO esté inscrito
+        List<ConvocatoriaResponseDto> disponibles = activas.stream()
+                .filter(c -> !idsInscritos.contains(c.getId()))
                 .map(this::mapToResponse)
                 .toList();
 
-        return new PageImpl<>(convocatoriaEntityList, PageRequest.of(page, size), convocatoriaEntityList.size());
+        // 4. Paginación manual
+        int start = page * size;
+        int end = Math.min(start + size, disponibles.size());
+
+        if (start > disponibles.size()) {
+            return Page.empty();
+        }
+
+        return new PageImpl<>(
+                disponibles.subList(start, end),
+                PageRequest.of(page, size),
+                disponibles.size()
+        );
     }
 
-    /**
-     * Recupera una convocatoria por su identificador.
-     *
-     * @param id identificador único
-     * @return DTO con datos públicos de la convocatoria
-     * @throws IllegalArgumentException si no existe la convocatoria
-     */
+    // ============================================================
+    // OBTENER POR ID
+    // ============================================================
+
     @Override
     @Transactional(readOnly = true)
     public ConvocatoriaResponseDto findById(Long id) {
 
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException("El id debe ser mayor que 0.");
-        }
-
         ConvocatoriaEntity convocatoria = convocatoriaRepository.findById(id)
-                .orElseThrow(
-                        () -> new IllegalArgumentException("Convocatoria con id " + id + " no encontrada.")
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Convocatoria con id " + id + " no encontrada.")
                 );
 
         return mapToResponse(convocatoria);
     }
 
-    /**
-     * Crea una nueva convocatoria asociada al club del usuario autenticado.
-     *
-     * @param dto datos requeridos para la creación
-     * @return representación pública de la convocatoria creada
-     * @throws IllegalStateException si el usuario no pertenece a un club
-     * @throws IllegalArgumentException si las fechas son inválidas
-     */
+    // ============================================================
+    // CREAR
+    // ============================================================
+
     @Override
     @Transactional
     public ConvocatoriaResponseDto create(ConvocatoriaCreateRequestDto dto) {
 
-
         String correo = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo).orElseThrow(
-                () -> new IllegalStateException("Usuario autenticado no encontrado.")
-        );
-        ClubEntity club = usuario.getClub();
+        UsuarioEntity usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new IllegalStateException("Usuario autenticado no encontrado."));
 
+        ClubEntity club = usuario.getClub();
         if (club == null) {
-            throw new IllegalStateException("El usuario autenticado no pertenece a ningún club.");
+            throw new IllegalStateException("El usuario no pertenece a un club.");
         }
 
         validarFechasCreacion(dto);
@@ -127,105 +167,77 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                 .descripcion(dto.descripcion())
                 .club(club)
                 .cupoMaximo(dto.cupoMaximo())
-                .fechaPublicacion(dto.fechaPublicacion())
-                .fechaCierre(dto.fechaCierre())
+                .inscritos(0)
+                .fechaPublicacion(dto.fechaInicioPostulacion())
+                .fechaCierre(dto.fechaFinPostulacion())
                 .fechaInicioPostulacion(dto.fechaInicioPostulacion())
                 .fechaFinPostulacion(dto.fechaFinPostulacion())
                 .requisitos(dto.requisitos())
-                .inscritos(0)
                 .estado(EventoEntity.EstadoEvento.ACTIVO)
                 .build();
 
-        ConvocatoriaEntity persisted = convocatoriaRepository.save(entity);
-
-        return mapToResponse(persisted);
+        return mapToResponse(convocatoriaRepository.save(entity));
     }
 
-    /**
-     * Actualiza parcialmente los campos editables de una convocatoria.
-     *
-     * @param id identificador de la convocatoria
-     * @param dto campos opcionales a modificar
-     * @return datos actualizados de la convocatoria
-     * @throws IllegalArgumentException si la convocatoria no existe o si las fechas resultantes son inválidas
-     */
+    // ============================================================
+    // EDITAR
+    // ============================================================
+
     @Override
     @Transactional
     public ConvocatoriaResponseDto update(Long id, ConvocatoriaEditRequestDto dto) {
 
         ConvocatoriaEntity entity = convocatoriaRepository.findById(id)
-                .orElseThrow(
-                        () -> new IllegalArgumentException("Convocatoria con id " + id + " no encontrada.")
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Convocatoria con id " + id + " no encontrada.")
                 );
 
         if (dto.titulo() != null) entity.setTitulo(dto.titulo());
         if (dto.descripcion() != null) entity.setDescripcion(dto.descripcion());
         if (dto.cupoMaximo() != null) entity.setCupoMaximo(dto.cupoMaximo());
-        if (dto.fechaCierre() != null) entity.setFechaCierre(dto.fechaCierre());
-        if (dto.fechaInicioPostulacion() != null) entity.setFechaInicioPostulacion(dto.fechaInicioPostulacion());
-        if (dto.fechaFinPostulacion() != null) entity.setFechaFinPostulacion(dto.fechaFinPostulacion());
+
+        if (dto.fechaInicioPostulacion() != null) {
+            entity.setFechaInicioPostulacion(dto.fechaInicioPostulacion());
+            entity.setFechaPublicacion(dto.fechaInicioPostulacion());
+        }
+        if (dto.fechaFinPostulacion() != null) {
+            entity.setFechaFinPostulacion(dto.fechaFinPostulacion());
+            entity.setFechaCierre(dto.fechaFinPostulacion());
+        }
+
         if (dto.requisitos() != null) entity.setRequisitos(dto.requisitos());
 
         validarFechasEdicion(entity);
 
-        ConvocatoriaEntity updated = convocatoriaRepository.save(entity);
-
-        return mapToResponse(updated);
+        return mapToResponse(convocatoriaRepository.save(entity));
     }
 
-    /**
-     * Verifica la coherencia temporal de los valores proporcionados
-     * durante la creación de una convocatoria.
-     *
-     * Reglas:
-     * fechaPublicacion ≤ fechaInicioPostulacion
-     * fechaInicioPostulacion ≤ fechaFinPostulacion
-     * fechaFinPostulacion ≤ fechaCierre
-     *
-     * @param dto estructura con fechas a validar
-     */
-    private void validarFechasCreacion(ConvocatoriaCreateRequestDto dto) {
+    // ============================================================
+    // VALIDACIONES
+    // ============================================================
 
-        if (dto.fechaInicioPostulacion().isBefore(dto.fechaPublicacion())) {
-            throw new IllegalArgumentException("La postulación no puede iniciar antes de la publicación.");
-        }
+    private void validarFechasCreacion(ConvocatoriaCreateRequestDto dto) {
 
         if (dto.fechaFinPostulacion().isBefore(dto.fechaInicioPostulacion())) {
             throw new IllegalArgumentException("La fecha fin de postulación no puede ser anterior a la fecha de inicio.");
         }
 
-        if (dto.fechaFinPostulacion().isAfter(dto.fechaCierre())) {
-            throw new IllegalArgumentException("La postulación no puede terminar después del cierre.");
+        if (dto.fechaFinPostulacion().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("La convocatoria no puede finalizar en el pasado.");
         }
     }
 
-    /**
-     * Verifica la coherencia temporal de la entidad resultante
-     * después de aplicar ediciones.
-     *
-     * @param entity entidad modificada
-     */
     private void validarFechasEdicion(ConvocatoriaEntity entity) {
 
-        if (entity.getFechaInicioPostulacion().isBefore(entity.getFechaPublicacion())) {
-            throw new IllegalArgumentException("La postulación no puede iniciar antes de la publicación.");
-        }
-
         if (entity.getFechaFinPostulacion().isBefore(entity.getFechaInicioPostulacion())) {
-            throw new IllegalArgumentException("La fecha fin de postulación no puede ser anterior a la fecha de inicio.");
-        }
-
-        if (entity.getFechaFinPostulacion().isAfter(entity.getFechaCierre())) {
-            throw new IllegalArgumentException("La postulación no puede terminar después del cierre.");
+            throw new IllegalArgumentException("La fecha fin no puede ser anterior a la fecha de inicio.");
         }
     }
 
-    /**
-     * Convierte una entidad en su representación de salida.
-     *
-     * @param c entidad persistida
-     * @return DTO con información pública
-     */
+    // ============================================================
+    // MAPPER
+    // ============================================================
+
     private ConvocatoriaResponseDto mapToResponse(ConvocatoriaEntity c) {
         return new ConvocatoriaResponseDto(
                 c.getId(),

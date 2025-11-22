@@ -18,7 +18,7 @@ import org.springframework.data.domain.Page;
 public interface IConvocatoriaService {
 
     /**
-     * Recupera una página de convocatorias en función de los parámetros de paginación.
+     * Recupera una página de todas las convocatorias visibles en el sistema.
      *
      * @param page índice de página (0-based)
      * @param size cantidad máxima de elementos por página
@@ -27,13 +27,26 @@ public interface IConvocatoriaService {
     Page<ConvocatoriaResponseDto> findAll(int page, int size);
 
     /**
-     * Recupera una página de convocatorias en función de los parámetros de paginación.
+     * Recupera una página de convocatorias asociadas al club del presidente autenticado.
      *
      * @param page índice de página (0-based)
      * @param size cantidad máxima de elementos por página
      * @return página de convocatorias transformadas a {@link ConvocatoriaResponseDto}
      */
     Page<ConvocatoriaResponseDto> findAllByPresidente(int page, int size);
+
+    /**
+     * Obtiene una página de convocatorias disponibles para un usuario con rol INTERESADO.
+     * Se excluyen aquellas donde el usuario ya esté inscrito en estado PENDIENTE o ACEPTADA.
+     * Solo se incluyen las convocatorias:
+     * - Activas
+     * - Dentro del periodo de postulación
+     *
+     * @param page índice de página (0-based)
+     * @param size cantidad máxima de elementos por página
+     * @return página filtrada de convocatorias disponibles
+     */
+    Page<ConvocatoriaResponseDto> findDisponiblesParaInteresado(int page, int size);
 
     /**
      * Obtiene una convocatoria según su identificador único.
@@ -46,6 +59,7 @@ public interface IConvocatoriaService {
 
     /**
      * Registra una nueva convocatoria utilizando los datos proporcionados en el DTO.
+     * Las fechas de publicación y cierre se derivan del periodo de postulación.
      *
      * @param dto información requerida para crear la convocatoria
      * @return convocatoria registrada en formato {@link ConvocatoriaResponseDto}

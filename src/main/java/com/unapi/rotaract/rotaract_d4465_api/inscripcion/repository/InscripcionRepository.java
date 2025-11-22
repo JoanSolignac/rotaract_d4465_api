@@ -9,12 +9,19 @@ import java.util.List;
 
 /**
  * Repositorio JPA para la persistencia y consulta de inscripciones.
+ *
+ * Incluye métodos auxiliares para verificar inscripciones activas
+ * y facilitar consultas por usuario, convocatoria y proyecto.
  */
 public interface InscripcionRepository extends JpaRepository<InscripcionEntity, Long> {
 
+    // ============================================================
+    // VALIDACIONES DE INSCRIPCIÓN
+    // ============================================================
+
     /**
      * Verifica si el usuario ya tiene una inscripción activa (PENDIENTE o ACEPTADA)
-     * a cualquier convocatoria.
+     * en alguna convocatoria.
      */
     boolean existsByUsuarioIdAndConvocatoriaIsNotNullAndEstadoIn(
             Long usuarioId,
@@ -26,6 +33,11 @@ public interface InscripcionRepository extends JpaRepository<InscripcionEntity, 
      */
     boolean existsByUsuarioIdAndProyectoId(Long usuarioId, Long proyectoId);
 
+
+    // ============================================================
+    // CONSULTAS POR CONVOCATORIA / PROYECTO
+    // ============================================================
+
     /**
      * Devuelve las inscripciones asociadas a una convocatoria.
      */
@@ -36,4 +48,35 @@ public interface InscripcionRepository extends JpaRepository<InscripcionEntity, 
      */
     Page<InscripcionEntity> findByProyectoId(Long proyectoId, Pageable pageable);
 
+    /**
+     * Devuelve todas las inscripciones de un proyecto (sin paginar).
+     * — Necesario para asistencia.
+     */
+    List<InscripcionEntity> findByProyectoId(Long proyectoId);
+
+
+    // ============================================================
+    // CONSULTAS POR PROYECTO + USUARIO (NUEVO — NECESARIO)
+    // ============================================================
+
+    /**
+     * Devuelve la inscripción de un usuario en un proyecto específico.
+     * — Necesario para asistencia.
+     */
+    List<InscripcionEntity> findByProyectoIdAndUsuarioId(Long proyectoId, Long usuarioId);
+
+
+    // ============================================================
+    // CONSULTAS POR USUARIO (EXISTENTES)
+    // ============================================================
+
+    /**
+     * Devuelve todas las inscripciones realizadas por un usuario.
+     */
+    List<InscripcionEntity> findByUsuarioId(Long usuarioId);
+
+    /**
+     * Devuelve todas las inscripciones del usuario que correspondan a convocatorias.
+     */
+    List<InscripcionEntity> findByUsuarioIdAndConvocatoriaIsNotNull(Long usuarioId);
 }
