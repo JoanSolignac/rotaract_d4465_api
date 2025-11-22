@@ -2,7 +2,9 @@ package com.unapi.rotaract.rotaract_d4465_api.auth.repository;
 
 import java.util.Optional;
 
+import com.unapi.rotaract.rotaract_d4465_api.auth.entity.RolEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
@@ -22,4 +24,8 @@ public interface UsuarioRepository extends JpaRepository<UsuarioEntity, Long> {
      * @return Optional que contiene el {@link UsuarioEntity} si existe
      */
     Optional<UsuarioEntity> findByCorreo(String correo);
+
+    @Query("SELECT r FROM RolEntity r WHERE r.nombre = :nombre")
+    Optional<RolEntity> findRolByNombre(String nombre);
+
 }

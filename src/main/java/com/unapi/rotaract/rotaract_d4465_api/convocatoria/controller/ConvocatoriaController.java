@@ -9,7 +9,6 @@ import com.unapi.rotaract.rotaract_d4465_api.inscripcion.interfaces.IInscripcion
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.dtos.InscripcionResponseDto;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,7 +16,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import jakarta.validation.Valid;
-
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
@@ -27,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * Controlador REST para operaciones relacionadas con convocatorias.
- * Expone endpoints públicos y privados según el rol del usuario.
+ * Contiene endpoints públicos, para interesados y para presidentes.
  */
 @RestController
 @RequestMapping("/convocatorias")
@@ -48,37 +46,31 @@ public class ConvocatoriaController {
             description = "Devuelve una página de convocatorias visibles públicamente."
     )
     public ResponseEntity<Page<ConvocatoriaResponseDto>> listarConvocatoriasPublicas(
-            @Parameter(description = "Número de página (0-based)")
             @RequestParam(defaultValue = "0") int page,
-
-            @Parameter(description = "Cantidad de resultados por página")
             @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(convocatoriaService.findAll(page, size));
     }
 
     // =====================================================================
-    // LISTAR DISPONIBLES PARA INTERESADO
+    // DISPONIBLES PARA INTERESADO
     // =====================================================================
 
     @GetMapping("/public/disponibles")
     @PreAuthorize("hasRole('INTERESADO')")
     @Operation(
             summary = "Listar convocatorias disponibles",
-            description = "Devuelve únicamente las convocatorias activas donde el usuario no está inscrito."
+            description = "Devuelve las convocatorias activas en las que el usuario no está inscrito."
     )
     public ResponseEntity<Page<ConvocatoriaResponseDto>> listarConvocatoriasDisponibles(
-            @Parameter(description = "Número de página (0-based)")
             @RequestParam(defaultValue = "0") int page,
-
-            @Parameter(description = "Cantidad de resultados por página")
             @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(convocatoriaService.findDisponiblesParaInteresado(page, size));
     }
 
     // =====================================================================
-    // LISTAR CONVOCATORIAS DEL PRESIDENTE
+    // LISTAR DEL PRESIDENTE
     // =====================================================================
 
     @GetMapping
@@ -88,10 +80,7 @@ public class ConvocatoriaController {
             description = "Devuelve una página de convocatorias asociadas al club del presidente autenticado."
     )
     public ResponseEntity<Page<ConvocatoriaResponseDto>> listarConvocatoriasPresidente(
-            @Parameter(description = "Número de página (0-based)")
             @RequestParam(defaultValue = "0") int page,
-
-            @Parameter(description = "Cantidad de resultados por página")
             @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(convocatoriaService.findAllByPresidente(page, size));
@@ -107,7 +96,6 @@ public class ConvocatoriaController {
             description = "Devuelve información pública de una convocatoria."
     )
     public ResponseEntity<ConvocatoriaResponseDto> obtenerConvocatoriaPublica(
-            @Parameter(description = "Identificador único de la convocatoria", required = true)
             @PathVariable Long id
     ) {
         return ResponseEntity.ok(convocatoriaService.findById(id));
@@ -124,9 +112,7 @@ public class ConvocatoriaController {
             description = "Registra una nueva convocatoria. Solo disponible para PRESIDENTE."
     )
     public ResponseEntity<ConvocatoriaResponseDto> crearConvocatoria(
-            @Valid @RequestBody
-            @Parameter(description = "Datos para crear convocatoria", required = true)
-            ConvocatoriaCreateRequestDto dto
+            @Valid @RequestBody ConvocatoriaCreateRequestDto dto
     ) {
         return ResponseEntity.ok(convocatoriaService.create(dto));
     }
@@ -139,20 +125,17 @@ public class ConvocatoriaController {
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(
             summary = "Editar convocatoria",
-            description = "Actualiza parcialmente una convocatoria. Solo PRESIDENTE."
+            description = "Actualiza parcialmente una convocatoria."
     )
     public ResponseEntity<ConvocatoriaResponseDto> editarConvocatoria(
-            @Parameter(description = "ID de la convocatoria", required = true)
             @PathVariable Long id,
-
-            @Valid @RequestBody
-            @Parameter(description = "Campos editables") ConvocatoriaEditRequestDto dto
+            @Valid @RequestBody ConvocatoriaEditRequestDto dto
     ) {
         return ResponseEntity.ok(convocatoriaService.update(id, dto));
     }
 
     // =====================================================================
-    // INSCRIBIRSE (INTERESADO)
+    // INSCRIBIRSE COMO INTERESADO
     // =====================================================================
 
     @PostMapping("/{convocatoriaId}/inscribirse")
@@ -162,7 +145,6 @@ public class ConvocatoriaController {
             description = "Registra la inscripción del usuario autenticado."
     )
     public ResponseEntity<String> inscribirseEnConvocatoria(
-            @Parameter(description = "ID de la convocatoria", required = true)
             @PathVariable Long convocatoriaId
     ) {
         inscripcionService.inscribirseEnConvocatoria(convocatoriaId);
@@ -170,7 +152,7 @@ public class ConvocatoriaController {
     }
 
     // =====================================================================
-    // LISTAR INSCRIPCIONES (PRESIDENTE / DISTRITAL)
+    // LISTAR INSCRIPCIONES DE UNA CONVOCATORIA
     // =====================================================================
 
     @GetMapping("/{convocatoriaId}/inscripciones")
@@ -180,13 +162,8 @@ public class ConvocatoriaController {
             description = "Devuelve una página de inscripciones asociadas a la convocatoria."
     )
     public ResponseEntity<Page<InscripcionResponseDto>> listarInscripcionesConvocatoria(
-            @Parameter(description = "ID de la convocatoria", required = true)
             @PathVariable Long convocatoriaId,
-
-            @Parameter(description = "Página solicitada")
             @RequestParam(defaultValue = "0") int page,
-
-            @Parameter(description = "Tamaño de página")
             @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(
@@ -200,15 +177,9 @@ public class ConvocatoriaController {
 
     @PostMapping("/{convocatoriaId}/inscripciones/{inscripcionId}/aceptar")
     @PreAuthorize("hasRole('PRESIDENTE')")
-    @Operation(
-            summary = "Aceptar inscripción",
-            description = "Aprueba una inscripción asociada a la convocatoria."
-    )
+    @Operation(summary = "Aceptar inscripción")
     public ResponseEntity<String> aceptarInscripcion(
-            @Parameter(description = "ID de la convocatoria")
             @PathVariable Long convocatoriaId,
-
-            @Parameter(description = "ID de la inscripción a aprobar")
             @PathVariable Long inscripcionId
     ) {
         inscripcionService.aceptarInscripcion(inscripcionId);
@@ -221,18 +192,36 @@ public class ConvocatoriaController {
 
     @PostMapping("/{convocatoriaId}/inscripciones/{inscripcionId}/rechazar")
     @PreAuthorize("hasRole('PRESIDENTE')")
-    @Operation(
-            summary = "Rechazar inscripción",
-            description = "Rechaza una inscripción asociada a la convocatoria."
-    )
+    @Operation(summary = "Rechazar inscripción")
     public ResponseEntity<String> rechazarInscripcion(
-            @Parameter(description = "ID de la convocatoria")
             @PathVariable Long convocatoriaId,
-
-            @Parameter(description = "ID de la inscripción a rechazar")
             @PathVariable Long inscripcionId
     ) {
         inscripcionService.rechazarInscripcion(inscripcionId);
         return ResponseEntity.ok("Inscripción rechazada correctamente.");
+    }
+
+    // =====================================================================
+    // CANCELAR INSCRIPCIÓN DEL USUARIO (INTERESADO)
+    // =====================================================================
+
+    @DeleteMapping("/{convocatoriaId}/cancelar-inscripcion")
+    @PreAuthorize("hasRole('INTERESADO')")
+    @Operation(
+            summary = "Cancelar mi inscripción a la convocatoria",
+            description = "Permite al usuario autenticado cancelar su inscripción si está en estado PENDIENTE."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Inscripción cancelada correctamente"),
+            @ApiResponse(responseCode = "400", description = "Regla de negocio incumplida",
+                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class))),
+            @ApiResponse(responseCode = "401", description = "No autenticado",
+                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
+    })
+    public ResponseEntity<?> cancelarInscripcionConvocatoria(
+            @PathVariable Long convocatoriaId
+    ) {
+        inscripcionService.cancelarInscripcionConvocatoria(convocatoriaId);
+        return ResponseEntity.ok("Inscripción cancelada correctamente.");
     }
 }

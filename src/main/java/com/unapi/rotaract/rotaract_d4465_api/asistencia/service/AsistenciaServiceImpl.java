@@ -5,14 +5,16 @@ import com.unapi.rotaract.rotaract_d4465_api.asistencia.dtos.AsistenciaResponseD
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.entity.AsistenciaEntity;
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.interfaces.IAsistenciaService;
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.repository.AsistenciaRepository;
-
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
+import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.entity.InscripcionEntity;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.entity.ProyectoEntity;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.repository.ProyectoRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +23,12 @@ import java.util.List;
 
 /**
  * Servicio de gestión de asistencias a proyectos.
- * - Lista inscritos para marcar asistencia
- * - Guarda presentes y faltas
+ *
+ * Funcionalidades:
+ * - Listar inscritos para marcar asistencia.
+ * - Guardar presentes y faltas.
+ * - Listar asistencias registradas de un proyecto.
+ * - Obtener el historial de asistencias del usuario autenticado.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,11 +37,34 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     private final ProyectoRepository proyectoRepository;
     private final InscripcionRepository inscripcionRepository;
     private final AsistenciaRepository asistenciaRepository;
+    private final UsuarioRepository usuarioRepository;
 
     // ============================================================
-    // LISTAR SOCIOS PARA ASISTENCIA
+    // UTILIDAD: USUARIO AUTENTICADO
     // ============================================================
 
+    /**
+     * Obtiene el usuario actualmente autenticado a partir del contexto de seguridad.
+     *
+     * @return entidad {@link UsuarioEntity} del usuario autenticado
+     * @throws IllegalArgumentException si no se encuentra el usuario en la base de datos
+     */
+    private UsuarioEntity getUsuarioAutenticado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String correo = auth.getName();
+
+        return usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario autenticado no encontrado."));
+    }
+
+    // ============================================================
+    // LISTAR SOCIOS PARA ASISTENCIA (PANTALLA DE MARCADO)
+    // ============================================================
+
+    /**
+     * Lista los socios inscritos en un proyecto para que el presidente pueda
+     * marcar asistencia. Si la asistencia no está activa, se lanza una excepción.
+     */
     @Override
     @Transactional(readOnly = true)
     public List<AsistenciaResponseDto> listarSociosParaAsistencia(Long proyectoId) {
@@ -77,9 +106,14 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     }
 
     // ============================================================
-    // GUARDAR ASISTENCIA
+    // GUARDAR ASISTENCIA (PRESENTES Y FALTAS)
     // ============================================================
 
+    /**
+     * Registra la asistencia de los usuarios inscritos a un proyecto.
+     * Los IDs contenidos en {@code dto.usuariosPresentesIds()} se marcan como PRESENTE
+     * y el resto de inscritos como FALTA.
+     */
     @Override
     @Transactional
     public void guardarAsistencia(Long proyectoId, AsistenciaGuardarRequestDto dto) {
@@ -125,4 +159,90 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
             asistenciaRepository.save(asistencia);
         }
     }
+
+    // ============================================================
+    // LISTAR ASISTENCIAS REGISTRADAS DE UN PROYECTO
+    // ============================================================
+
+    /**
+     * Devuelve todas las asistencias registradas para un proyecto, independientemente
+     * de si son presentes o faltas.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<AsistenciaResponseDto> listarAsistenciasDeProyecto(Long proyectoId) {
+
+        ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
+                .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
+
+        List<AsistenciaEntity> asistencias = asistenciaRepository.findByProyectoId(proyectoId);
+
+        return asistencias.stream()
+                .map(this::mapAsistenciaToResponse)
+                .toList();
+    }
+
+    // ============================================================
+    // HISTORIAL DE MIS ASISTENCIAS (USUARIO AUTENTICADO)
+    // ============================================================
+
+    /**
+     * Devuelve el historial de asistencias del usuario autenticado.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<AsistenciaResponseDto> obtenerMisAsistencias() {
+
+        UsuarioEntity usuario = getUsuarioAutenticado();
+
+        List<AsistenciaEntity> asistencias =
+                asistenciaRepository.findByUsuarioId(usuario.getId());
+
+        return asistencias.stream()
+                .map(this::mapMisAsistencias)
+                .toList();
+    }
+
+
+    // ============================================================
+    // MAPPER AUXILIAR
+    // ============================================================
+
+    /**
+     * Transforma una entidad de asistencia en su DTO de respuesta.
+     */
+    private AsistenciaResponseDto mapAsistenciaToResponse(AsistenciaEntity asistencia) {
+
+        UsuarioEntity u = asistencia.getUsuario();
+        Long proyectoId = asistencia.getProyecto() != null
+                ? asistencia.getProyecto().getId()
+                : null;
+
+        boolean presente =
+                asistencia.getEstado() == AsistenciaEntity.EstadoAsistencia.PRESENTE;
+
+        return AsistenciaResponseDto.builder()
+                .usuarioId(u.getId())
+                .usuarioNombreCompleto(u.getNombre())
+                .usuarioCorreo(u.getCorreo())
+                .proyectoId(proyectoId)
+                .presente(presente)
+                .build();
+    }
+
+    private AsistenciaResponseDto mapMisAsistencias(AsistenciaEntity asistencia) {
+        ProyectoEntity p = asistencia.getProyecto();
+
+        boolean presente = asistencia.getEstado() ==
+                AsistenciaEntity.EstadoAsistencia.PRESENTE;
+
+        return AsistenciaResponseDto.builder()
+                .usuarioId(null)
+                .usuarioNombreCompleto(null)
+                .usuarioCorreo(null)
+                .proyectoId(p != null ? p.getId() : null)
+                .presente(presente)
+                .build();
+    }
+
 }

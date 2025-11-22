@@ -69,7 +69,7 @@ public class ClubEntity {
      * - cascade: se propagan operaciones de persistencia al listado de miembros.
      * - orphanRemoval: elimina usuarios huérfanos (dependiendo de la lógica de negocio).
      */
-    @OneToMany(mappedBy = "club", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "club")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<UsuarioEntity> miembros;

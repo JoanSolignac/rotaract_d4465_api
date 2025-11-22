@@ -1,5 +1,6 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.interfaces;
 
+import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubCreateRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubEditRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubResponseDto;
 import org.springframework.data.domain.Page;
@@ -51,7 +52,7 @@ public interface IClubService {
      *         Las implementaciones pueden traducir errores de bajo nivel a excepciones de dominio más específicas
      *         (por ejemplo, violaciones de unicidad).
      */
-    ClubResponseDto createClub(ClubResponseDto clubDto);
+    ClubResponseDto createClub(ClubCreateRequestDto clubDto);
 
     /**
      * Actualiza los datos de un club existente identificado por {@code id}.
