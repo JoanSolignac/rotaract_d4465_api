@@ -63,7 +63,8 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
 
     /**
      * Lista los socios inscritos en un proyecto para que el presidente pueda
-     * marcar asistencia. Si la asistencia no está activa, se lanza una excepción.
+     * marcar asistencia. Si la asistencia no está activa o el proyecto no
+     * pertenece al club del presidente, se lanza una excepción.
      */
     @Override
     @Transactional(readOnly = true)
@@ -72,8 +73,16 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
         ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
 
+        // Verificar que la asistencia esté activa
         if (!proyecto.puedeRegistrarAsistencia()) {
             throw new IllegalStateException("La asistencia no está activa para este proyecto.");
+        }
+
+        // Verificar que el presidente sea del mismo club que el proyecto
+        UsuarioEntity presidente = getUsuarioAutenticado();
+        if (proyecto.getClub() == null || presidente.getClub() == null ||
+                !proyecto.getClub().getId().equals(presidente.getClub().getId())) {
+            throw new IllegalStateException("No puedes gestionar la asistencia de un proyecto que no pertenece a tu club.");
         }
 
         // Inscritos del proyecto
@@ -113,6 +122,8 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
      * Registra la asistencia de los usuarios inscritos a un proyecto.
      * Los IDs contenidos en {@code dto.usuariosPresentesIds()} se marcan como PRESENTE
      * y el resto de inscritos como FALTA.
+     *
+     * Solo el presidente del club dueño del proyecto puede registrar la asistencia.
      */
     @Override
     @Transactional
@@ -123,6 +134,13 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
 
         if (!proyecto.puedeRegistrarAsistencia()) {
             throw new IllegalStateException("La asistencia no está activa para este proyecto.");
+        }
+
+        // Verificar que el presidente sea del mismo club que el proyecto
+        UsuarioEntity presidente = getUsuarioAutenticado();
+        if (proyecto.getClub() == null || presidente.getClub() == null ||
+                !proyecto.getClub().getId().equals(presidente.getClub().getId())) {
+            throw new IllegalStateException("No puedes registrar la asistencia de un proyecto que no pertenece a tu club.");
         }
 
         List<Long> presentesIds = dto.usuariosPresentesIds();

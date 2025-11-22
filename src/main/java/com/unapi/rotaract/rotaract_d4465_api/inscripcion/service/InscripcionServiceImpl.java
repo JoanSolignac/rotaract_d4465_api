@@ -161,6 +161,12 @@ public class InscripcionServiceImpl implements IInscripcionService {
             throw new IllegalArgumentException("El proyecto no tiene cupo disponible.");
         }
 
+        // Validar que el usuario pertenezca al mismo club del proyecto
+        if (usuario.getClub() == null || proyecto.getClub() == null ||
+                !usuario.getClub().getId().equals(proyecto.getClub().getId())) {
+            throw new IllegalArgumentException("Solo puedes inscribirte a proyectos de tu propio club.");
+        }
+
         if (inscripcionRepository.existsByUsuarioIdAndProyectoId(usuario.getId(), proyectoId)) {
             throw new IllegalArgumentException("Ya estás inscrito en este proyecto.");
         }
@@ -398,7 +404,7 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
         UsuarioEntity usuarioInscrito = insc.getUsuario();
 
-        // Guardar estado previo por si necesitas lógica futura
+        // Guardar estado previo por si se requiere lógica futura
         InscripcionEntity.EstadoInscripcion estadoAnterior = insc.getEstado();
 
         insc.setEstado(InscripcionEntity.EstadoInscripcion.RECHAZADA);
