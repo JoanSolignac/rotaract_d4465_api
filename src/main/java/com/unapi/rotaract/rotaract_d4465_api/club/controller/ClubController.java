@@ -45,7 +45,7 @@ public class ClubController {
     // -------------------------------------------------------------------------
     // GET: Listar clubes
     // -------------------------------------------------------------------------
-    @GetMapping("/public/")
+    @GetMapping("/public")
     @Operation(summary = "Listar clubes", description = "Devuelve una página con los clubes registrados.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Listado paginado de clubes",
