@@ -28,4 +28,5 @@ public interface AsistenciaRepository extends JpaRepository<AsistenciaEntity, Lo
      * (Útil para historial si lo necesitas luego).
      */
     List<AsistenciaEntity> findByUsuarioId(Long usuarioId);
+
 }

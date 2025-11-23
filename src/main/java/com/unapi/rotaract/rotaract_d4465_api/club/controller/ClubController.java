@@ -1,10 +1,13 @@
 package com.unapi.rotaract.rotaract_d4465_api.club.controller;
 
 import com.unapi.rotaract.rotaract_d4465_api.club.dtos.*;
+import com.unapi.rotaract.rotaract_d4465_api.club.interfaces.IClubConsultaService;
 import com.unapi.rotaract.rotaract_d4465_api.club.service.ClubServiceImpl;
 import com.unapi.rotaract.rotaract_d4465_api.common.dtos.ExceptionResponseDto;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,19 +24,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 import java.util.Map;
 
-/**
- * Controlador REST para operaciones relacionadas con clubes.
- *
- * Expone endpoints para:
- * - Listar clubes
- * - Obtener club por id
- * - Crear club
- * - Crear club asignando presidente
- * - Actualizar club (solo presidente del club)
- * - Desactivar club
- *
- * Los errores se modelan usando {@link ExceptionResponseDto}.
- */
 @RestController
 @RequestMapping("/clubs")
 @RequiredArgsConstructor
@@ -41,6 +31,7 @@ import java.util.Map;
 public class ClubController {
 
     private final ClubServiceImpl clubService;
+    private final IClubConsultaService clubConsultaService;
 
     // -------------------------------------------------------------------------
     // GET: Listar clubes
@@ -80,6 +71,33 @@ public class ClubController {
     }
 
     // -------------------------------------------------------------------------
+    // GET: Detalle completo de un club (nuevo)
+    // -------------------------------------------------------------------------
+    @GetMapping("/public/{id}/detalle")
+    @Operation(
+            summary = "Obtener detalle completo de un club",
+            description = "Devuelve el club, presidente, integrantes paginados, convocatorias y proyectos."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Detalle del club obtenido",
+                    content = @Content(schema = @Schema(implementation = ClubDetalleResponseDto.class))),
+            @ApiResponse(responseCode = "404", description = "Club no encontrado",
+                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
+    })
+    public ResponseEntity<ClubDetalleResponseDto> getClubDetalle(
+            @Parameter(description = "ID del club", required = true)
+            @PathVariable Long id,
+            @Parameter(description = "Número de página para integrantes", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamaño de página para integrantes", example = "10")
+            @RequestParam(defaultValue = "10") int size
+    ){
+        return ResponseEntity.ok(
+                clubConsultaService.obtenerDetalleClub(id, page, size)
+        );
+    }
+
+    // -------------------------------------------------------------------------
     // POST: Crear club (sin presidente)
     // -------------------------------------------------------------------------
     @PostMapping("/")
@@ -102,7 +120,7 @@ public class ClubController {
     }
 
     // -------------------------------------------------------------------------
-    // POST: Crear club asignando presidente (nuevo endpoint)
+    // POST: Crear club asignando presidente
     // -------------------------------------------------------------------------
     @PostMapping("/con-presidente")
     @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
@@ -175,7 +193,9 @@ public class ClubController {
         ));
     }
 
-
+    // -------------------------------------------------------------------------
+    // DELETE: Eliminar socio
+    // -------------------------------------------------------------------------
     @DeleteMapping("/{clubId}/socios/{socioId}")
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(
@@ -195,7 +215,9 @@ public class ClubController {
         return ResponseEntity.ok(Map.of("message", "Socio eliminado del club exitosamente."));
     }
 
-
+    // -------------------------------------------------------------------------
+    // POST: Transferir presidencia
+    // -------------------------------------------------------------------------
     @PostMapping("/{clubId}/transferir-presidencia")
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(summary = "Transferir presidencia", description = "Permite al presidente transferir su cargo a otro socio del club.")
@@ -211,6 +233,4 @@ public class ClubController {
         clubService.transferirPresidencia(clubId, dto.nuevoPresidenteId());
         return ResponseEntity.ok(Map.of("message", "Presidencia transferida exitosamente."));
     }
-
-
 }
