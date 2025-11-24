@@ -55,7 +55,7 @@ public class AuthService {
                 usuarioEntity.getCorreo(),
                 usuarioEntity.getRol().getNombre(),
                 usuarioEntity.getNombre(),
-                usuarioEntity.getClub().getId() != null ? usuarioEntity.getClub().getId() : null,
+                usuarioEntity.getClub() != null ? usuarioEntity.getClub().getId() : null,
                 usuarioEntity.getId()
         );
     }
