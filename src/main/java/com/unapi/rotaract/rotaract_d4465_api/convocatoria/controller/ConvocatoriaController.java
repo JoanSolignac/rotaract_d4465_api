@@ -179,7 +179,6 @@ public class ConvocatoriaController {
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(summary = "Aceptar inscripción")
     public ResponseEntity<String> aceptarInscripcion(
-            @PathVariable Long convocatoriaId,
             @PathVariable Long inscripcionId
     ) {
         inscripcionService.aceptarInscripcion(inscripcionId);
@@ -194,7 +193,6 @@ public class ConvocatoriaController {
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(summary = "Rechazar inscripción")
     public ResponseEntity<String> rechazarInscripcion(
-            @PathVariable Long convocatoriaId,
             @PathVariable Long inscripcionId
     ) {
         inscripcionService.rechazarInscripcion(inscripcionId);
@@ -224,4 +222,10 @@ public class ConvocatoriaController {
         inscripcionService.cancelarInscripcionConvocatoria(convocatoriaId);
         return ResponseEntity.ok("Inscripción cancelada correctamente.");
     }
+
+    // =====================================================================
+    // LISTAR MIS INSCRIPCIONES
+    // =====================================================================
+
+    // Este endpoint se ha movido a `InscripcionController` para mantener la separación de responsabilidades.
 }

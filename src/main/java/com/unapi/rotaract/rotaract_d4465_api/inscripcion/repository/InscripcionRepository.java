@@ -76,7 +76,17 @@ public interface InscripcionRepository extends JpaRepository<InscripcionEntity, 
     List<InscripcionEntity> findByUsuarioId(Long usuarioId);
 
     /**
+     * Devuelve las inscripciones paginadas realizadas por un usuario.
+     */
+    Page<InscripcionEntity> findByUsuarioId(Long usuarioId, Pageable pageable);
+
+    /**
      * Devuelve todas las inscripciones del usuario que correspondan a convocatorias.
      */
     List<InscripcionEntity> findByUsuarioIdAndConvocatoriaIsNotNull(Long usuarioId);
+
+    /**
+     * Devuelve las inscripciones paginadas del usuario que correspondan a convocatorias.
+     */
+    Page<InscripcionEntity> findByUsuarioIdAndConvocatoriaIsNotNull(Long usuarioId, Pageable pageable);
 }

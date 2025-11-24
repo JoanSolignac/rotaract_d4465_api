@@ -472,6 +472,22 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<InscripcionResponseDto> listarMisInscripcionesConvocatorias(int page, int size) {
+        UsuarioEntity usuario = getUsuarioAutenticado();
+        var pageEntities = inscripcionRepository.findByUsuarioIdAndConvocatoriaIsNotNull(usuario.getId(), PageRequest.of(page, size));
+        return pageEntities.map(this::mapToResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<InscripcionResponseDto> listarMisInscripciones(int page, int size) {
+        UsuarioEntity usuario = getUsuarioAutenticado();
+        var pageEntities = inscripcionRepository.findByUsuarioId(usuario.getId(), PageRequest.of(page, size));
+        return pageEntities.map(this::mapToResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MisInscripcionesItemDto> obtenerMisInscripciones() {
 
         UsuarioEntity usuario = getUsuarioAutenticado();

@@ -11,6 +11,13 @@ public interface IInscripcionService {
     // Convocatorias
     void inscribirseEnConvocatoria(Long convocatoriaId);
     Page<InscripcionResponseDto> listarInscripcionesConvocatoria(Long convocatoriaId, int page, int size);
+    Page<InscripcionResponseDto> listarMisInscripcionesConvocatorias(int page, int size);
+
+    /**
+     * Devuelve las inscripciones (paginadas) del usuario autenticado,
+     * incluyendo convocatorias y proyectos.
+     */
+    Page<InscripcionResponseDto> listarMisInscripciones(int page, int size);
 
     // Proyectos
     void inscribirseEnProyecto(Long proyectoId);
