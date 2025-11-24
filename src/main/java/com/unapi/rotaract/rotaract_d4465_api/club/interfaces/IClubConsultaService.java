@@ -19,4 +19,14 @@ public interface IClubConsultaService {
      */
     ClubDetalleResponseDto obtenerDetalleClub(Long clubId, int page, int size);
 
+    /**
+     * Obtiene las métricas del club del presidente autenticado.
+     *
+     * @param correoPresidente correo del presidente autenticado
+     * @param page   número de página para la paginación de integrantes
+     * @param size   tamaño de página para la paginación de integrantes
+     * @return DTO con información detallada del club del presidente
+     */
+    ClubDetalleResponseDto obtenerMetricasClubPresidente(String correoPresidente, int page, int size);
+
 }

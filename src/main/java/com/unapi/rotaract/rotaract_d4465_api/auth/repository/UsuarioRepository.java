@@ -35,6 +35,15 @@ public interface UsuarioRepository extends JpaRepository<UsuarioEntity, Long> {
     Optional<UsuarioEntity> findByCorreo(String correo);
 
     /**
+     * Busca un usuario activo por su correo electrónico.
+     *
+     * @param correo el correo electrónico del usuario a buscar
+     * @return Optional que contiene el {@link UsuarioEntity} si existe un usuario activo con ese correo,
+     *         o un Optional vacío si no se encuentra ninguno.
+     */
+    Optional<UsuarioEntity> findByCorreoAndActivoTrue(String correo);
+
+    /**
      * Consulta personalizada para obtener un rol por su nombre.
      *
      * Esta consulta se define con JPQL. Se utiliza cuando se necesita resolver información

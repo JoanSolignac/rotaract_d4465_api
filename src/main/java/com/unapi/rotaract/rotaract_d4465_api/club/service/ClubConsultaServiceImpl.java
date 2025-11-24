@@ -191,4 +191,38 @@ public class ClubConsultaServiceImpl implements IClubConsultaService {
                 .proyectos(proyectos)
                 .build();
     }
+
+    @Override
+    /**
+     * Obtiene las métricas y detalles del club del presidente autenticado.
+     *
+     * Proceso:
+     *  - Busca al usuario presidente por su correo y verifica que tenga el rol PRESIDENTE.
+     *  - Verifica que el presidente tenga un club asignado.
+     *  - Delega al método obtenerDetalleClub para construir la respuesta completa.
+     *
+     * @param correoPresidente correo del presidente autenticado
+     * @param page número de página para la paginación de integrantes
+     * @param size tamaño de página para la paginación de integrantes
+     * @return DTO con información detallada del club del presidente
+     * @throws EntityNotFoundException si el usuario no existe, no es presidente o no tiene club asignado
+     */
+    public ClubDetalleResponseDto obtenerMetricasClubPresidente(String correoPresidente, int page, int size) {
+        // 1. Buscar al presidente por correo
+        UsuarioEntity presidente = usuarioRepository.findByCorreoAndActivoTrue(correoPresidente)
+                .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado"));
+
+        // 2. Verificar que tenga el rol PRESIDENTE
+        if (presidente.getRol() == null || !ROL_PRESIDENTE.equals(presidente.getRol().getNombre())) {
+            throw new EntityNotFoundException("El usuario no tiene el rol de PRESIDENTE");
+        }
+
+        // 3. Verificar que tenga un club asignado
+        if (presidente.getClub() == null) {
+            throw new EntityNotFoundException("El presidente no tiene un club asignado");
+        }
+
+        // 4. Obtener el detalle completo del club
+        return obtenerDetalleClub(presidente.getClub().getId(), page, size);
+    }
 }

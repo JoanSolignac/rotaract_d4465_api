@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -94,6 +95,35 @@ public class ClubController {
     ){
         return ResponseEntity.ok(
                 clubConsultaService.obtenerDetalleClub(id, page, size)
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // GET: Métricas del club del presidente autenticado
+    // -------------------------------------------------------------------------
+    @GetMapping("/metricas")
+    @PreAuthorize("hasRole('PRESIDENTE')")
+    @Operation(
+            summary = "Obtener métricas del club del presidente",
+            description = "Devuelve las métricas y detalles completos del club del presidente autenticado, incluyendo convocatorias, proyectos e integrantes."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Métricas del club obtenidas",
+                    content = @Content(schema = @Schema(implementation = ClubDetalleResponseDto.class))),
+            @ApiResponse(responseCode = "403", description = "No autorizado - usuario no es presidente",
+                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class))),
+            @ApiResponse(responseCode = "404", description = "Presidente sin club asignado",
+                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
+    })
+    public ResponseEntity<ClubDetalleResponseDto> getMetricasClubPresidente(
+            @Parameter(description = "Número de página para integrantes", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Tamaño de página para integrantes", example = "10")
+            @RequestParam(defaultValue = "10") int size
+    ){
+        String correoPresidente = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(
+                clubConsultaService.obtenerMetricasClubPresidente(correoPresidente, page, size)
         );
     }
 
