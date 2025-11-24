@@ -29,12 +29,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
 
-    /**
-     * Inicia sesión de un usuario registrado.
-     */
     public AuthResponseDto login(@Valid LoginRequestDto loginRequestDto) {
 
-        // Autenticar credenciales
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -46,49 +42,35 @@ public class AuthService {
             throw new BadCredentialsException("Credenciales incorrectas");
         }
 
-        // Obtener usuario
         UsuarioEntity usuarioEntity = usuarioRepository.findByCorreo(loginRequestDto.correo())
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
-        // Validar estado
         if (!usuarioEntity.getActivo()) {
             throw new IllegalStateException("El usuario se encuentra inactivo");
         }
 
-        // Manejo seguro del clubId para evitar NullPointerException
-        Long clubId = usuarioEntity.getClub() == null ? null : usuarioEntity.getClub().getId();
-
-        // Generar tokens JWT
         String accessToken = jwtService.generateToken(usuarioEntity);
         String refreshToken = jwtService.generateRefreshToken(usuarioEntity);
 
-        // Respuesta
         return new AuthResponseDto(
                 accessToken,
                 refreshToken,
                 usuarioEntity.getCorreo(),
-                usuarioEntity.getRol() != null ? usuarioEntity.getRol().getNombre() : null,
+                usuarioEntity.getRol().getNombre(),
                 usuarioEntity.getNombre(),
-                clubId,
                 usuarioEntity.getId()
         );
     }
 
-    /**
-     * Registra un nuevo usuario con rol INTERESADO.
-     */
     public AuthResponseDto register(@Valid RegistroRequestDto registroRequestDto) {
 
-        // Verificar correo duplicado
         if (usuarioRepository.findByCorreo(registroRequestDto.correo()).isPresent()) {
             throw new IllegalStateException("El correo ya se encuentra registrado");
         }
 
-        // Rol INTERESADO
         RolEntity rolInteresado = rolRepository.findByNombre("INTERESADO")
                 .orElseThrow(() -> new RuntimeException("Rol 'INTERESADO' no encontrado en el sistema"));
 
-        // Crear nuevo usuario
         UsuarioEntity nuevoUsuario = UsuarioEntity.builder()
                 .nombre(registroRequestDto.nombre().toUpperCase())
                 .correo(registroRequestDto.correo().toLowerCase())
@@ -101,10 +83,6 @@ public class AuthService {
 
         usuarioRepository.save(nuevoUsuario);
 
-        // Manejo seguro clubId
-        Long clubId = nuevoUsuario.getClub() == null ? null : nuevoUsuario.getClub().getId();
-
-        // Tokens
         String accessToken = jwtService.generateToken(nuevoUsuario);
         String refreshToken = jwtService.generateRefreshToken(nuevoUsuario);
 
@@ -114,7 +92,6 @@ public class AuthService {
                 nuevoUsuario.getCorreo(),
                 nuevoUsuario.getRol().getNombre(),
                 nuevoUsuario.getNombre(),
-                clubId,
                 nuevoUsuario.getId()
         );
     }
