@@ -16,6 +16,16 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
 
+  jackson:
+    date-format: yyyy-MM-dd
+    time-zone: America/Lima
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+
+  output:
+    ansi:
+      enabled: ALWAYS
+
 server:
   port: ${PORT:8080}
   servlet:
