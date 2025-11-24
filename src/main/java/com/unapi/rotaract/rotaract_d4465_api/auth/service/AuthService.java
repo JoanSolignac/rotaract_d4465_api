@@ -54,7 +54,9 @@ public class AuthService {
                 refreshToken,
                 usuarioEntity.getCorreo(),
                 usuarioEntity.getRol().getNombre(),
-                usuarioEntity.getNombre()
+                usuarioEntity.getNombre(),
+                usuarioEntity.getClub().getId() != null ? usuarioEntity.getClub().getId() : null,
+                usuarioEntity.getId()
         );
     }
 
@@ -94,7 +96,9 @@ public class AuthService {
                 refreshToken,
                 nuevoUsuario.getCorreo(),
                 nuevoUsuario.getRol().getNombre(),
-                nuevoUsuario.getNombre()
+                nuevoUsuario.getNombre(),
+                nuevoUsuario.getClub() != null ? nuevoUsuario.getClub().getId() : null,
+                nuevoUsuario.getId()
         );
     }
 }

@@ -91,7 +91,8 @@ public class JwtService {
                 .builder()
                 .setClaims(Map.of("id", usuarioEntity.getId(),
                     "rol", "ROLE_" + usuarioEntity.getRol().getNombre().toUpperCase(),
-                        "nombre", usuarioEntity.getNombre()
+                        "nombre", usuarioEntity.getNombre(),
+                        "clubId", usuarioEntity.getClub() != null ? usuarioEntity.getClub().getId() : null
                     ))
                 .setSubject(usuarioEntity.getCorreo())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
