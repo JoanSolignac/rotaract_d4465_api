@@ -90,7 +90,8 @@ public class JwtService {
         return Jwts
                 .builder()
                 .setClaims(Map.of("id", usuarioEntity.getId(),
-                    "rol", "ROLE_" + usuarioEntity.getRol().getNombre().toUpperCase()
+                    "rol", "ROLE_" + usuarioEntity.getRol().getNombre().toUpperCase(),
+                        "nombre", usuarioEntity.getNombre()
                     ))
                 .setSubject(usuarioEntity.getCorreo())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
