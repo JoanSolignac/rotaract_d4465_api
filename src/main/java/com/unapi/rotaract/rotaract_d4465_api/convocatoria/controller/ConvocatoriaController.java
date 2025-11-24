@@ -56,7 +56,7 @@ public class ConvocatoriaController {
     // DISPONIBLES PARA INTERESADO
     // =====================================================================
 
-    @GetMapping("/public/disponibles")
+    @GetMapping("/disponibles")
     @PreAuthorize("hasRole('INTERESADO')")
     @Operation(
             summary = "Listar convocatorias disponibles",
