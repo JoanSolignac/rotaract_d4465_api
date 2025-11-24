@@ -25,6 +25,8 @@ public record AuthResponseDto(
     String correo,
 
     @NotBlank(message = "El rol del usuario no puede estar vacío")
-    String rol
+    String rol,
+
+    String nombre
 
 ) {}

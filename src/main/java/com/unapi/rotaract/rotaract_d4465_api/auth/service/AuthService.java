@@ -53,7 +53,8 @@ public class AuthService {
                 accessToken,
                 refreshToken,
                 usuarioEntity.getCorreo(),
-                usuarioEntity.getRol().getNombre()
+                usuarioEntity.getRol().getNombre(),
+                usuarioEntity.getNombre()
         );
     }
 
@@ -92,7 +93,8 @@ public class AuthService {
                 accessToken,
                 refreshToken,
                 nuevoUsuario.getCorreo(),
-                nuevoUsuario.getRol().getNombre()
+                nuevoUsuario.getRol().getNombre(),
+                nuevoUsuario.getNombre()
         );
     }
 }
