@@ -1,6 +1,7 @@
 package com.unapi.rotaract.rotaract_d4465_api.auth.service;
 
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,54 +30,68 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
     /**
-     * Inicia sesión de un usuario existente.
+     * Inicia sesión de un usuario registrado.
      */
     public AuthResponseDto login(@Valid LoginRequestDto loginRequestDto) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginRequestDto.correo(),
-                        loginRequestDto.contrasena()
-                )
-        );
 
+        // Autenticar credenciales
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequestDto.correo(),
+                            loginRequestDto.contrasena()
+                    )
+            );
+        } catch (Exception e) {
+            throw new BadCredentialsException("Credenciales incorrectas");
+        }
+
+        // Obtener usuario
         UsuarioEntity usuarioEntity = usuarioRepository.findByCorreo(loginRequestDto.correo())
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
+        // Validar estado
         if (!usuarioEntity.getActivo()) {
             throw new IllegalStateException("El usuario se encuentra inactivo");
         }
 
+        // Manejo seguro del clubId para evitar NullPointerException
+        Long clubId = usuarioEntity.getClub() == null ? null : usuarioEntity.getClub().getId();
+
+        // Generar tokens JWT
         String accessToken = jwtService.generateToken(usuarioEntity);
         String refreshToken = jwtService.generateRefreshToken(usuarioEntity);
 
+        // Respuesta
         return new AuthResponseDto(
                 accessToken,
                 refreshToken,
                 usuarioEntity.getCorreo(),
-                usuarioEntity.getRol().getNombre(),
+                usuarioEntity.getRol() != null ? usuarioEntity.getRol().getNombre() : null,
                 usuarioEntity.getNombre(),
-                usuarioEntity.getClub() != null ? usuarioEntity.getClub().getId() : null,
+                clubId,
                 usuarioEntity.getId()
         );
     }
 
     /**
-     * Registra un nuevo usuario en el sistema con rol INTERESADO.
+     * Registra un nuevo usuario con rol INTERESADO.
      */
     public AuthResponseDto register(@Valid RegistroRequestDto registroRequestDto) {
 
-        // Validar si el correo ya existe en la base de datos
+        // Verificar correo duplicado
         if (usuarioRepository.findByCorreo(registroRequestDto.correo()).isPresent()) {
             throw new IllegalStateException("El correo ya se encuentra registrado");
         }
 
-        // Obtener el rol "INTERESADO" desde la base de datos
+        // Rol INTERESADO
         RolEntity rolInteresado = rolRepository.findByNombre("INTERESADO")
                 .orElseThrow(() -> new RuntimeException("Rol 'INTERESADO' no encontrado en el sistema"));
 
+        // Crear nuevo usuario
         UsuarioEntity nuevoUsuario = UsuarioEntity.builder()
                 .nombre(registroRequestDto.nombre().toUpperCase())
-                .correo(registroRequestDto.correo())
+                .correo(registroRequestDto.correo().toLowerCase())
                 .contrasena(passwordEncoder.encode(registroRequestDto.contrasena()))
                 .ciudad(registroRequestDto.ciudad().toUpperCase())
                 .fechaNacimiento(registroRequestDto.fechaNacimiento())
@@ -84,10 +99,12 @@ public class AuthService {
                 .rol(rolInteresado)
                 .build();
 
-        // Guardar el usuario en la base de datos
         usuarioRepository.save(nuevoUsuario);
 
-        // Generar tokens JWT
+        // Manejo seguro clubId
+        Long clubId = nuevoUsuario.getClub() == null ? null : nuevoUsuario.getClub().getId();
+
+        // Tokens
         String accessToken = jwtService.generateToken(nuevoUsuario);
         String refreshToken = jwtService.generateRefreshToken(nuevoUsuario);
 
@@ -97,7 +114,7 @@ public class AuthService {
                 nuevoUsuario.getCorreo(),
                 nuevoUsuario.getRol().getNombre(),
                 nuevoUsuario.getNombre(),
-                nuevoUsuario.getClub() != null ? nuevoUsuario.getClub().getId() : null,
+                clubId,
                 nuevoUsuario.getId()
         );
     }
