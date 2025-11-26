@@ -12,6 +12,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+// ❗ IMPORT CORRECTO PARA QUE SPRING PUEDA LEER JSON
+import org.springframework.web.bind.annotation.RequestBody;
+
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,7 +25,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 import java.util.Map;
 
@@ -72,7 +75,7 @@ public class ClubController {
     }
 
     // -------------------------------------------------------------------------
-    // GET: Detalle completo de un club (nuevo)
+    // GET: Detalle de club
     // -------------------------------------------------------------------------
     @GetMapping("/public/{id}/detalle")
     @Operation(
@@ -99,26 +102,24 @@ public class ClubController {
     }
 
     // -------------------------------------------------------------------------
-    // GET: Métricas del club del presidente autenticado
+    // GET: Métricas del club del presidente
     // -------------------------------------------------------------------------
     @GetMapping("/metricas")
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(
             summary = "Obtener métricas del club del presidente",
-            description = "Devuelve las métricas y detalles completos del club del presidente autenticado, incluyendo convocatorias, proyectos e integrantes."
+            description = "Devuelve las métricas y detalles completos del club del presidente autenticado."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Métricas del club obtenidas",
                     content = @Content(schema = @Schema(implementation = ClubDetalleResponseDto.class))),
-            @ApiResponse(responseCode = "403", description = "No autorizado - usuario no es presidente",
+            @ApiResponse(responseCode = "403", description = "No autorizado",
                     content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class))),
             @ApiResponse(responseCode = "404", description = "Presidente sin club asignado",
                     content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
     })
     public ResponseEntity<ClubDetalleResponseDto> getMetricasClubPresidente(
-            @Parameter(description = "Número de página para integrantes", example = "0")
             @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Tamaño de página para integrantes", example = "10")
             @RequestParam(defaultValue = "10") int size
     ){
         String correoPresidente = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -128,17 +129,11 @@ public class ClubController {
     }
 
     // -------------------------------------------------------------------------
-    // POST: Crear club (sin presidente)
+    // POST: Crear club sin presidente
     // -------------------------------------------------------------------------
     @PostMapping("/")
     @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
     @Operation(summary = "Crear club", description = "Crea un nuevo club sin asignar presidente.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Club creado",
-                    content = @Content(schema = @Schema(implementation = ClubResponseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Datos inválidos",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
     public ResponseEntity<?> createClub(
             @Valid @RequestBody ClubCreateRequestDto clubDto
     ){
@@ -150,7 +145,7 @@ public class ClubController {
     }
 
     // -------------------------------------------------------------------------
-    // POST: Crear club asignando presidente
+    // POST: Crear club + asignar presidente
     // -------------------------------------------------------------------------
     @PostMapping("/con-presidente")
     @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
@@ -158,14 +153,6 @@ public class ClubController {
             summary = "Crear club asignando presidente",
             description = "Crea un club y asigna como presidente a un usuario existente."
     )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Club creado y presidente asignado",
-                    content = @Content(schema = @Schema(implementation = ClubResponseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Datos inválidos",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class))),
-            @ApiResponse(responseCode = "404", description = "Usuario presidente no encontrado",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
     public ResponseEntity<?> createClubWithPresidente(
             @Valid @RequestBody ClubCreateWithPresidenteRequestDto dto
     ){
@@ -177,17 +164,11 @@ public class ClubController {
     }
 
     // -------------------------------------------------------------------------
-    // PATCH: Actualizar club (solo presidente)
+    // PATCH: Actualizar club
     // -------------------------------------------------------------------------
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('PRESIDENTE')")
-    @Operation(summary = "Actualizar club", description = "Actualiza los datos del club. Solo para presidentes.")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Club actualizado",
-                    content = @Content(schema = @Schema(implementation = ClubResponseDto.class))),
-            @ApiResponse(responseCode = "403", description = "No autorizado",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
+    @Operation(summary = "Actualizar club", description = "Actualiza los datos del club (solo presidente).")
     public ResponseEntity<?> updateClub(
             @Valid @PathVariable long id,
             @Valid @RequestBody ClubEditRequestDto clubDto
@@ -200,20 +181,11 @@ public class ClubController {
     }
 
     // -------------------------------------------------------------------------
-    // PATCH: Desactivar club (solo representante distrital)
+    // PATCH: Desactivar club
     // -------------------------------------------------------------------------
     @PatchMapping("/deactivate/{id}")
     @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
-    @Operation(
-            summary = "Desactivar club",
-            description = "Marca un club como inactivo. No lo elimina físicamente."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Club desactivado",
-                    content = @Content(schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "404", description = "Club no encontrado",
-                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
-    })
+    @Operation(summary = "Desactivar club", description = "Marca un club como inactivo.")
     public ResponseEntity<?> deactivateClub(
             @Valid @PathVariable long id
     ){
@@ -230,13 +202,8 @@ public class ClubController {
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(
             summary = "Eliminar socio del club",
-            description = "Permite que el presidente elimine a un socio del club y lo regrese al rol INTERESADO."
+            description = "Permite al presidente eliminar un socio y regresarlo a rol INTERESADO."
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Socio eliminado correctamente"),
-            @ApiResponse(responseCode = "403", description = "No autorizado"),
-            @ApiResponse(responseCode = "404", description = "Club o socio no encontrado")
-    })
     public ResponseEntity<?> removeSocio(
             @PathVariable Long clubId,
             @PathVariable Long socioId
@@ -247,15 +214,13 @@ public class ClubController {
 
     // -------------------------------------------------------------------------
     // POST: Transferir presidencia
-    // ------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     @PostMapping("/{clubId}/transferir-presidencia/{nuevoPresidenteId}")
     @PreAuthorize("hasRole('PRESIDENTE')")
-    @Operation(summary = "Transferir presidencia", description = "Permite al presidente transferir su cargo a otro socio del club.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Presidencia transferida exitosamente"),
-            @ApiResponse(responseCode = "403", description = "No autorizado"),
-            @ApiResponse(responseCode = "404", description = "Usuario o club no encontrado")
-    })
+    @Operation(
+            summary = "Transferir presidencia",
+            description = "Permite al presidente transferir su cargo a otro socio del club."
+    )
     public ResponseEntity<?> transferirPresidencia(
             @PathVariable Long clubId,
             @PathVariable Long nuevoPresidenteId
