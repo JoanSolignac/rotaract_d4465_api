@@ -24,7 +24,7 @@ public class MiembroController {
     /**
      * LISTADO PAGINADO (solo Representante Distrital)
      */
-    @PreAuthorize("hasAuthority('REPRESENTANTE DISTRITAL')")
+    @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
     @GetMapping("/paginado")
     public ResponseEntity<Page<MiembroResponseDto>> listarMiembrosPaginados(
             @RequestParam(defaultValue = "0") int pagina,
