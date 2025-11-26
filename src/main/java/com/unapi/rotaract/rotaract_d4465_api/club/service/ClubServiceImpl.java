@@ -10,6 +10,8 @@ import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import com.unapi.rotaract.rotaract_d4465_api.club.interfaces.IClubService;
 import com.unapi.rotaract.rotaract_d4465_api.club.repository.ClubRepository;
+import com.unapi.rotaract.rotaract_d4465_api.inscripcion.entity.InscripcionEntity;
+import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,6 +39,7 @@ public class ClubServiceImpl implements IClubService {
 
     private final ClubRepository clubRepository;
     private final UsuarioRepository usuarioRepository;
+    private final InscripcionRepository inscripcionRepository;
 
     /**
      * Recupera una página de clubes. Construye un {@link Pageable} a partir de los parámetros recibidos y delega la consulta en {@link ClubRepository#findAll(Pageable)}.
@@ -294,7 +297,32 @@ public class ClubServiceImpl implements IClubService {
         if (socio.getRol().getNombre().equals("PRESIDENTE"))
             throw new IllegalArgumentException("No puedes eliminar al presidente del club.");
 
-        // Cambiar rol → INTERESADO
+        // ============================================================
+        // CANCELAR INSCRIPCIONES DE CONVOCATORIA (ACEPTADAS / PENDIENTES)
+        // ============================================================
+
+        List<InscripcionEntity> inscripciones = inscripcionRepository
+                .findByUsuarioId(socio.getId())
+                .stream()
+                .filter(i -> i.getConvocatoria() != null) // solo convocatorias
+                .filter(i -> i.getEstado() == InscripcionEntity.EstadoInscripcion.ACEPTADA
+                        || i.getEstado() == InscripcionEntity.EstadoInscripcion.PENDIENTE)
+                .toList();
+
+        for (InscripcionEntity ins : inscripciones) {
+            ins.setEstado(InscripcionEntity.EstadoInscripcion.CANCELADA);
+
+            // restar cupo del club (opcional)
+            var conv = ins.getConvocatoria();
+            conv.setInscritos(conv.getInscritos() - 1);
+        }
+
+        inscripcionRepository.saveAll(inscripciones);
+
+        // ============================================================
+        // CAMBIAR ROL A INTERESADO Y QUITAR CLUB
+        // ============================================================
+
         RolEntity rolInteresado = usuarioRepository.findRolByNombre("INTERESADO")
                 .orElseThrow(() -> new IllegalStateException("Rol INTERESADO no encontrado."));
 
@@ -303,6 +331,7 @@ public class ClubServiceImpl implements IClubService {
 
         usuarioRepository.save(socio);
     }
+
 
     public void transferirPresidencia(Long clubId, Long nuevoPresidenteId) {
 
@@ -339,8 +368,5 @@ public class ClubServiceImpl implements IClubService {
         usuarioRepository.save(actualPresidente);
         usuarioRepository.save(nuevoPresidente);
     }
-
-
-
 
 }

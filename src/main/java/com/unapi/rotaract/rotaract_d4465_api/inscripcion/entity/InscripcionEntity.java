@@ -67,6 +67,7 @@ public class InscripcionEntity {
     public enum EstadoInscripcion {
         PENDIENTE,
         ACEPTADA,
-        RECHAZADA
+        RECHAZADA,
+        CANCELADA
     }
 }
