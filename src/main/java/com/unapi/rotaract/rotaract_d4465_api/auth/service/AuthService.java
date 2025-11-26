@@ -115,15 +115,22 @@ public class AuthService {
 
         String resetToken = jwtService.generatePasswordResetToken(usuario);
 
-        String resetLink = "https://rotaractd4465.com/reset-password?token=" + resetToken;
+        // URL del FRONTEND donde llega el usuario
+        String resetLink = "https://rotaract-d4465-frontend-production.up.railway.app/reset-password?token=" + resetToken;
 
         String html = """
-                <h2>Recuperación de contraseña - Rotaract D4465</h2>
-                <p>Hola, has solicitado recuperar tu contraseña.</p>
-                <p>Haz clic en el siguiente enlace para continuar:</p>
-                <a href="%s" style="color:#8C1D40;font-weight:bold;">Restablecer contraseña</a>
-                <p>Este enlace caduca en 10 minutos.</p>
-                """.formatted(resetLink);
+            <h2>Recuperación de contraseña - Rotaract D4465</h2>
+            <p>Hola, has solicitado recuperar tu contraseña.</p>
+            <p>Haz clic en el siguiente enlace para continuar:</p>
+            <p>
+                <a href="%s" 
+                   style="padding: 12px 20px; background-color:#8C1D40; color:white; 
+                          text-decoration:none; border-radius:6px; font-weight:bold;">
+                    Restablecer contraseña
+                </a>
+            </p>
+            <p>Este enlace caduca en 10 minutos.</p>
+            """.formatted(resetLink);
 
         emailService.enviarCorreo(
                 usuario.getCorreo(),
@@ -131,6 +138,7 @@ public class AuthService {
                 html
         );
     }
+
 
     // -------------------------------------------
     // 🔥 RESTABLECER CONTRASEÑA (RESET PASSWORD)
