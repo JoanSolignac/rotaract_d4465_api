@@ -99,4 +99,5 @@ public interface UsuarioRepository extends JpaRepository<UsuarioEntity, Long> {
     long countByClubIdAndActivoTrue(Long clubId);
 
 
+    UsuarioEntity findByRolNombre(String representante);
 }
