@@ -247,8 +247,8 @@ public class ClubController {
 
     // -------------------------------------------------------------------------
     // POST: Transferir presidencia
-    // -------------------------------------------------------------------------
-    @PostMapping("/{clubId}/transferir-presidencia")
+    // ------------------------------------------------------------------------
+    @PostMapping("/{clubId}/transferir-presidencia/{nuevoPresidenteId}")
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(summary = "Transferir presidencia", description = "Permite al presidente transferir su cargo a otro socio del club.")
     @ApiResponses({
@@ -258,9 +258,10 @@ public class ClubController {
     })
     public ResponseEntity<?> transferirPresidencia(
             @PathVariable Long clubId,
-            @Valid @RequestBody TransferirPresidenciaRequestDto dto
+            @PathVariable Long nuevoPresidenteId
     ){
-        clubService.transferirPresidencia(clubId, dto.nuevoPresidenteId());
+        clubService.transferirPresidencia(clubId, nuevoPresidenteId);
         return ResponseEntity.ok(Map.of("message", "Presidencia transferida exitosamente."));
     }
+
 }
