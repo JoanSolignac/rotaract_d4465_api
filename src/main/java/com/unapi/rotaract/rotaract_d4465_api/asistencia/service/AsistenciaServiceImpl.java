@@ -19,17 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
-/**
- * Servicio de gestión de asistencias a proyectos.
- *
- * Funcionalidades:
- * - Listar inscritos para marcar asistencia.
- * - Guardar presentes y faltas.
- * - Listar asistencias registradas de un proyecto.
- * - Obtener el historial de asistencias del usuario autenticado.
- */
 @Service
 @RequiredArgsConstructor
 public class AsistenciaServiceImpl implements IAsistenciaService {
@@ -43,12 +35,6 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     // UTILIDAD: USUARIO AUTENTICADO
     // ============================================================
 
-    /**
-     * Obtiene el usuario actualmente autenticado a partir del contexto de seguridad.
-     *
-     * @return entidad {@link UsuarioEntity} del usuario autenticado
-     * @throws IllegalArgumentException si no se encuentra el usuario en la base de datos
-     */
     private UsuarioEntity getUsuarioAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String correo = auth.getName();
@@ -58,14 +44,9 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     }
 
     // ============================================================
-    // LISTAR SOCIOS PARA ASISTENCIA (PANTALLA DE MARCADO)
+    // 1. LISTAR SOCIOS PARA MARCAR ASISTENCIA
     // ============================================================
 
-    /**
-     * Lista los socios inscritos en un proyecto para que el presidente pueda
-     * marcar asistencia. Si la asistencia no está activa o el proyecto no
-     * pertenece al club del presidente, se lanza una excepción.
-     */
     @Override
     @Transactional(readOnly = true)
     public List<AsistenciaResponseDto> listarSociosParaAsistencia(Long proyectoId) {
@@ -73,27 +54,23 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
         ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
 
-        // Verificar que la asistencia esté activa
+        // Solo se marca asistencia si está activa
         if (!proyecto.puedeRegistrarAsistencia()) {
             throw new IllegalStateException("La asistencia no está activa para este proyecto.");
         }
 
-        // Verificar que el presidente sea del mismo club que el proyecto
         UsuarioEntity presidente = getUsuarioAutenticado();
         if (proyecto.getClub() == null || presidente.getClub() == null ||
                 !proyecto.getClub().getId().equals(presidente.getClub().getId())) {
             throw new IllegalStateException("No puedes gestionar la asistencia de un proyecto que no pertenece a tu club.");
         }
 
-        // Inscritos del proyecto
-        List<InscripcionEntity> inscripciones =
-                inscripcionRepository.findByProyectoId(proyectoId);
+        List<InscripcionEntity> inscripciones = inscripcionRepository.findByProyectoId(proyectoId);
 
         return inscripciones.stream().map(ins -> {
 
             Long usuarioId = ins.getUsuario().getId();
 
-            // Ver si ya tiene registro de asistencia
             AsistenciaEntity asistencia = asistenciaRepository
                     .findByProyectoIdAndUsuarioId(proyectoId, usuarioId)
                     .orElse(null);
@@ -115,16 +92,9 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     }
 
     // ============================================================
-    // GUARDAR ASISTENCIA (PRESENTES Y FALTAS)
+    // 2. GUARDAR ASISTENCIA
     // ============================================================
 
-    /**
-     * Registra la asistencia de los usuarios inscritos a un proyecto.
-     * Los IDs contenidos en {@code dto.usuariosPresentesIds()} se marcan como PRESENTE
-     * y el resto de inscritos como FALTA.
-     *
-     * Solo el presidente del club dueño del proyecto puede registrar la asistencia.
-     */
     @Override
     @Transactional
     public void guardarAsistencia(Long proyectoId, AsistenciaGuardarRequestDto dto) {
@@ -136,7 +106,6 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
             throw new IllegalStateException("La asistencia no está activa para este proyecto.");
         }
 
-        // Verificar que el presidente sea del mismo club que el proyecto
         UsuarioEntity presidente = getUsuarioAutenticado();
         if (proyecto.getClub() == null || presidente.getClub() == null ||
                 !proyecto.getClub().getId().equals(presidente.getClub().getId())) {
@@ -144,10 +113,7 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
         }
 
         List<Long> presentesIds = dto.usuariosPresentesIds();
-
-        // Inscritos reales del proyecto
-        List<InscripcionEntity> inscripciones =
-                inscripcionRepository.findByProyectoId(proyectoId);
+        List<InscripcionEntity> inscripciones = inscripcionRepository.findByProyectoId(proyectoId);
 
         for (InscripcionEntity ins : inscripciones) {
 
@@ -179,13 +145,9 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     }
 
     // ============================================================
-    // LISTAR ASISTENCIAS REGISTRADAS DE UN PROYECTO
+    // 3. LISTAR ASISTENCIAS PARA VER (NO EDITAR)
     // ============================================================
 
-    /**
-     * Devuelve todas las asistencias registradas para un proyecto, independientemente
-     * de si son presentes o faltas.
-     */
     @Override
     @Transactional(readOnly = true)
     public List<AsistenciaResponseDto> listarAsistenciasDeProyecto(Long proyectoId) {
@@ -193,7 +155,16 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
         ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
 
+        // Solo validar club, NO validar si asistencia está activa
+        UsuarioEntity presidente = getUsuarioAutenticado();
+        if (proyecto.getClub() == null || presidente.getClub() == null ||
+                !proyecto.getClub().getId().equals(presidente.getClub().getId())) {
+            throw new IllegalStateException("No puedes ver la asistencia de un proyecto que no pertenece a tu club.");
+        }
+
         List<AsistenciaEntity> asistencias = asistenciaRepository.findByProyectoId(proyectoId);
+
+        if (asistencias == null) asistencias = Collections.emptyList();
 
         return asistencias.stream()
                 .map(this::mapAsistenciaToResponse)
@@ -201,34 +172,26 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     }
 
     // ============================================================
-    // HISTORIAL DE MIS ASISTENCIAS (USUARIO AUTENTICADO)
+    // 4. HISTORIAL DE MIS ASISTENCIAS
     // ============================================================
 
-    /**
-     * Devuelve el historial de asistencias del usuario autenticado.
-     */
     @Override
     @Transactional(readOnly = true)
     public List<AsistenciaResponseDto> obtenerMisAsistencias() {
 
         UsuarioEntity usuario = getUsuarioAutenticado();
 
-        List<AsistenciaEntity> asistencias =
-                asistenciaRepository.findByUsuarioId(usuario.getId());
+        List<AsistenciaEntity> asistencias = asistenciaRepository.findByUsuarioId(usuario.getId());
 
         return asistencias.stream()
                 .map(this::mapMisAsistencias)
                 .toList();
     }
 
-
     // ============================================================
-    // MAPPER AUXILIAR
+    // MAPPERS
     // ============================================================
 
-    /**
-     * Transforma una entidad de asistencia en su DTO de respuesta.
-     */
     private AsistenciaResponseDto mapAsistenciaToResponse(AsistenciaEntity asistencia) {
 
         UsuarioEntity u = asistencia.getUsuario();
@@ -249,10 +212,10 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     }
 
     private AsistenciaResponseDto mapMisAsistencias(AsistenciaEntity asistencia) {
+
         ProyectoEntity p = asistencia.getProyecto();
 
-        boolean presente = asistencia.getEstado() ==
-                AsistenciaEntity.EstadoAsistencia.PRESENTE;
+        boolean presente = asistencia.getEstado() == AsistenciaEntity.EstadoAsistencia.PRESENTE;
 
         return AsistenciaResponseDto.builder()
                 .usuarioId(null)
@@ -262,5 +225,4 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
                 .presente(presente)
                 .build();
     }
-
 }
