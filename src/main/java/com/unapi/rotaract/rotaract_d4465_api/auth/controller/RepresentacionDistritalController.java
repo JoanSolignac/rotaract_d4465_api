@@ -15,7 +15,7 @@ public class RepresentacionDistritalController {
 
     private final RepresentacionDistritalService representacionService;
 
-    @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
+    @PreAuthorize("hasAnyAuthority('ROLE_REPRESENTANTE DISTRITAL')")
     @PostMapping("/transferir/{nuevoId}")
     public ResponseEntity<?> transferirRepresentacion(@PathVariable Long nuevoId) {
 
