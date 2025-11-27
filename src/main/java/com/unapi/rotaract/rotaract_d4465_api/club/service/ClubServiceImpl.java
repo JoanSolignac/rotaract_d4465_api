@@ -138,20 +138,31 @@ public class ClubServiceImpl implements IClubService {
     @Override
     public ClubResponseDto updateClub(long id, ClubEditRequestDto clubDto) {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        UsuarioEntity usuarioEntity = usuarioRepository.findByCorreo(username).orElseThrow(
-                () -> new IllegalArgumentException("Usuario autenticado no encontrado.")
-        );
+        // 1. Usuario autenticado
+        String correoAuth = SecurityContextHolder.getContext().getAuthentication().getName();
+        UsuarioEntity usuarioEntity = usuarioRepository.findByCorreo(correoAuth)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario autenticado no encontrado."));
 
-        ClubEntity clubEntity = clubRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("Club con id " + id + " no encontrado.")
-        );
+        // 2. Validar que sea presidente
+        if (!"PRESIDENTE".equals(usuarioEntity.getRol().getNombre())) {
+            throw new IllegalArgumentException("No tienes permiso para actualizar un club.");
+        }
 
+        // 3. Obtener club
+        ClubEntity clubEntity = clubRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Club con id " + id + " no encontrado."));
+
+        // 4. Validar que el presidente pertenece al club
         if (usuarioEntity.getClub() == null || !usuarioEntity.getClub().getId().equals(clubEntity.getId())) {
             throw new IllegalArgumentException("No tienes permiso para actualizar este club.");
         }
 
+        // 5. Validar si el club está activo
+        if (!Boolean.TRUE.equals(clubEntity.getActivo())) {
+            throw new IllegalStateException("No se puede modificar un club desactivado por el representante distrital.");
+        }
+
+        // 6. Actualizar campos permitidos (solo no nulos)
         if (clubDto.nombre() != null) {
             clubEntity.setNombre(clubDto.nombre());
         }
@@ -164,18 +175,18 @@ public class ClubServiceImpl implements IClubService {
             clubEntity.setCiudad(clubDto.ciudad());
         }
 
-        ClubEntity updatedClub = clubRepository.save(clubEntity);
+        // 7. Guardar cambios
+        ClubEntity updated = clubRepository.save(clubEntity);
 
-        return ClubResponseDto
-                .builder()
-                .id(updatedClub.getId())
-                .nombre(updatedClub.getNombre())
-                .departamento(updatedClub.getDepartamento())
-                .ciudad(updatedClub.getCiudad())
-                .fechaCreacion(updatedClub.getFechaCreacion())
-                .activo(updatedClub.getActivo())
+        // 8. Respuesta
+        return ClubResponseDto.builder()
+                .id(updated.getId())
+                .nombre(updated.getNombre())
+                .departamento(updated.getDepartamento())
+                .ciudad(updated.getCiudad())
+                .fechaCreacion(updated.getFechaCreacion())
+                .activo(updated.getActivo())
                 .build();
-
     }
 
     /**

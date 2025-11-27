@@ -2,6 +2,7 @@ package com.unapi.rotaract.rotaract_d4465_api.asistencia.service;
 
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.dtos.AsistenciaGuardarRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.dtos.AsistenciaResponseDto;
+import com.unapi.rotaract.rotaract_d4465_api.asistencia.dtos.HistorialAsistenciaDto;
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.entity.AsistenciaEntity;
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.interfaces.IAsistenciaService;
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.repository.AsistenciaRepository;
@@ -54,7 +55,6 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
         ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
 
-        // Solo se marca asistencia si está activa
         if (!proyecto.puedeRegistrarAsistencia()) {
             throw new IllegalStateException("La asistencia no está activa para este proyecto.");
         }
@@ -155,7 +155,6 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
         ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
 
-        // Solo validar club, NO validar si asistencia está activa
         UsuarioEntity presidente = getUsuarioAutenticado();
         if (proyecto.getClub() == null || presidente.getClub() == null ||
                 !proyecto.getClub().getId().equals(presidente.getClub().getId())) {
@@ -172,7 +171,7 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     }
 
     // ============================================================
-    // 4. HISTORIAL DE MIS ASISTENCIAS
+    // 4. MÉTODO ANTIGUO (NO SE TOCA)
     // ============================================================
 
     @Override
@@ -185,6 +184,24 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
 
         return asistencias.stream()
                 .map(this::mapMisAsistencias)
+                .toList();
+    }
+
+    // ============================================================
+    // 5. NUEVO HISTORIAL DETALLADO
+    // ============================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<HistorialAsistenciaDto> obtenerHistorialAsistencias() {
+
+        UsuarioEntity usuario = getUsuarioAutenticado();
+
+        List<AsistenciaEntity> asistencias = asistenciaRepository.findByUsuarioId(usuario.getId());
+
+        return asistencias.stream()
+                .sorted((a, b) -> b.getFechaRegistro().compareTo(a.getFechaRegistro()))
+                .map(this::mapHistorial)
                 .toList();
     }
 
@@ -224,5 +241,18 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
                 .proyectoId(p != null ? p.getId() : null)
                 .presente(presente)
                 .build();
+    }
+
+    private HistorialAsistenciaDto mapHistorial(AsistenciaEntity asistencia) {
+
+        ProyectoEntity p = asistencia.getProyecto();
+
+        return new HistorialAsistenciaDto(
+                asistencia.getId(),
+                p != null ? p.getId() : null,
+                p != null ? p.getTitulo() : null,  // AJUSTA SI CAMBIA EL CAMPO
+                asistencia.getEstado().name(),
+                asistencia.getFechaRegistro()
+        );
     }
 }

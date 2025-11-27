@@ -2,6 +2,7 @@ package com.unapi.rotaract.rotaract_d4465_api.asistencia.interfaces;
 
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.dtos.AsistenciaGuardarRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.asistencia.dtos.AsistenciaResponseDto;
+import com.unapi.rotaract.rotaract_d4465_api.asistencia.dtos.HistorialAsistenciaDto;
 
 import java.util.List;
 
@@ -42,9 +43,19 @@ public interface IAsistenciaService {
     List<AsistenciaResponseDto> listarAsistenciasDeProyecto(Long proyectoId);
 
     /**
-     * Devuelve el historial de asistencias del usuario autenticado.
+     * Método original para obtener asistencias del usuario autenticado.
+     * (Lo dejamos tal cual para no romper nada que ya lo use.)
      *
      * @return listado de asistencias propias del usuario actual
      */
     List<AsistenciaResponseDto> obtenerMisAsistencias();
+
+    /**
+     * NUEVO MÉTODO — Historial completo del usuario autenticado,
+     * incluyendo detalle del proyecto, fecha y estado de asistencia.
+     *
+     * @return listado de asistencias del usuario autenticado en formato detallado
+     */
+    List<HistorialAsistenciaDto> obtenerHistorialAsistencias();
+
 }
