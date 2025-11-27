@@ -8,8 +8,6 @@ import com.unapi.rotaract.rotaract_d4465_api.auth.repository.RolRepository;
 import com.unapi.rotaract.rotaract_d4465_api.common.dtos.NotificacionDto;
 import com.unapi.rotaract.rotaract_d4465_api.common.email.interfaces.IEmailService;
 
-
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -54,24 +52,25 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
             throw new IllegalArgumentException("Solo un SOCIO o un INTERESADO puede ser representante distrital.");
         }
 
+        // Roles
         RolEntity rolRD = rolRepository.findByNombre("REPRESENTANTE DISTRITAL")
                 .orElseThrow(() -> new IllegalStateException("Rol REPRESENTANTE DISTRITAL no encontrado."));
 
         RolEntity rolSocio = rolRepository.findByNombre("SOCIO")
                 .orElseThrow(() -> new IllegalStateException("Rol SOCIO no encontrado."));
 
-        // Transferir rol
+        // Transferir rol (el RD saliente queda como SOCIO)
         actualRD.setRol(rolSocio);
         nuevo.setRol(rolRD);
 
-        // Invalidar sesiones previas: incrementar tokenVersion en ambos
+        // Invalidar sesiones previas incrementando tokenVersion
         actualRD.setTokenVersion(actualRD.getTokenVersion() + 1);
         nuevo.setTokenVersion(nuevo.getTokenVersion() + 1);
 
         usuarioRepository.save(actualRD);
         usuarioRepository.save(nuevo);
 
-        // Notificaciones en tiempo real via WebSocket
+        // Notificaciones WebSocket
         enviarNotificacionesWebsocket(actualRD, nuevo);
 
         // Notificaciones por correo
@@ -89,8 +88,8 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
                 nuevo.getId(),
                 new NotificacionDto(
                         "Designación como Representante Distrital",
-                        "Ha sido designado como representante distrital del Distrito Rotaract 4465. " +
-                                "La representación fue transferida por " + anterior.getNombre() + "."
+                        "Ha sido designado como representante distrital del Distrito Rotaract 4465. "
+                                + "La representación fue transferida por " + anterior.getNombre() + "."
                 )
         );
 
@@ -99,8 +98,8 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
                 anterior.getId(),
                 new NotificacionDto(
                         "Transferencia de representación distrital realizada",
-                        "La representación distrital ha sido transferida a " + nuevo.getNombre() + ". " +
-                                "Su rol ha sido actualizado a SOCIO."
+                        "La representación distrital ha sido transferida a " + nuevo.getNombre() + ". "
+                                + "Su rol ha sido actualizado a SOCIO."
                 )
         );
     }
