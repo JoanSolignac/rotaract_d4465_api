@@ -10,6 +10,8 @@ import com.unapi.rotaract.rotaract_d4465_api.club.dtos.ClubResponseDto;
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
 import com.unapi.rotaract.rotaract_d4465_api.club.interfaces.IClubService;
 import com.unapi.rotaract.rotaract_d4465_api.club.repository.ClubRepository;
+import com.unapi.rotaract.rotaract_d4465_api.common.dtos.NotificacionDto;
+import com.unapi.rotaract.rotaract_d4465_api.common.email.interfaces.IEmailService;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.entity.InscripcionEntity;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
 import jakarta.validation.Valid;
@@ -40,14 +42,11 @@ public class ClubServiceImpl implements IClubService {
     private final ClubRepository clubRepository;
     private final UsuarioRepository usuarioRepository;
     private final InscripcionRepository inscripcionRepository;
+    private final IEmailService emailService;
+    private final com.unapi.rotaract.rotaract_d4465_api.common.services.NotificacionService notificacionService;
 
     /**
-     * Recupera una página de clubes. Construye un {@link Pageable} a partir de los parámetros recibidos y delega la consulta en {@link ClubRepository#findAll(Pageable)}.
-     *
-     * @param page índice de la página a recuperar (0-based; 0 = primera página)
-     * @param size número máximo de elementos por página (debe ser mayor que 0)
-     * @return {@link Page} de {@link ClubResponseDto} con los clubes de la página. Nunca {@code null}; puede estar vacío.
-     * @throws IllegalArgumentException si {@code size} es menor o igual que 0
+     * Recupera una página de clubes.
      */
     @Override
     public Page<ClubResponseDto> findAll(int page, int size) {
@@ -58,7 +57,7 @@ public class ClubServiceImpl implements IClubService {
 
         List<ClubResponseDto> clubList = clubRepository.findAll(PageRequest.of(page, size))
                 .stream()
-                .filter(c -> c.getActivo() == true)
+                .filter(c -> Boolean.TRUE.equals(c.getActivo()))
                 .map(
                         clubEntity -> ClubResponseDto.builder()
                                 .id(clubEntity.getId())
@@ -70,16 +69,12 @@ public class ClubServiceImpl implements IClubService {
                                 .build()
                 ).toList();
 
-        Pageable pageable =  PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size);
         return new PageImpl<>(clubList, pageable, clubList.size());
     }
 
     /**
-     * Recupera un club por su identificador. Este método delega en {@link ClubRepository#findById(Object)} y transforma la entidad obtenida en {@link ClubResponseDto}.
-     *
-     * @param id identificador único del club (debe ser mayor que 0)
-     * @return {@link ClubResponseDto} con los datos del club solicitado
-     * @throws IllegalArgumentException si {@code id} es negativo o cero, o si no se encuentra el club con el identificador proporcionado
+     * Recupera un club por su identificador.
      */
     @Override
     public ClubResponseDto findById(long id) {
@@ -105,12 +100,7 @@ public class ClubServiceImpl implements IClubService {
     }
 
     /**
-     * Crea y persiste un nuevo club a partir de los datos proporcionados en el DTO. Comportamiento: Si {@code clubDto} es {@code null} se lanza {@link IllegalArgumentException}. Se establece {@link LocalDate#now()} en {@code fechaCreacion} y el campo {@code activo} se inicializa en {@code true} antes de persistir la entidad. La entidad resultante persistida se transforma y devuelve como {@link ClubResponseDto}.
-     *
-     * @param clubDto DTO con los datos del club a crear. No debe ser {@code null}.
-     * @return {@link ClubResponseDto} con los datos del club creado (incluyendo el id asignado por la base de datos).
-     * @throws IllegalArgumentException si {@code clubDto} es {@code null} o contiene datos inválidos según las reglas de negocio.
-     * @throws org.springframework.dao.DataAccessException en caso de errores de persistencia subyacentes.
+     * Crea un nuevo club sin asignar presidente.
      */
     @Override
     public ClubResponseDto createClub(@Valid ClubCreateRequestDto clubDto) {
@@ -143,13 +133,7 @@ public class ClubServiceImpl implements IClubService {
     }
 
     /**
-     * Actualiza los datos de un club identificado por {@code id} con la información proporcionada en {@link ClubEditRequestDto}. Flujo y garantías: Se valida que el usuario autenticado tiene permiso sobre el club llamando a {@link #(ClubEntity)}; si no, se lanza una excepción. Se busca la entidad del club y se actualizan sólo los campos presentes en el DTO (comportamiento tipo "parcial"). Se persisten los cambios y se devuelve un {@link ClubResponseDto} con el estado actualizado.
-     *
-     * @param id identificador del club a actualizar; debe existir en la base de datos
-     * @param clubDto DTO con los campos editables (pueden ser null aquellos que no se desean cambiar)
-     * @return {@link ClubResponseDto} con la representación del club luego de la actualización
-     * @throws IllegalArgumentException si el club no existe, si el usuario no tiene permisos o si los datos son inválidos
-     * @throws org.springframework.dao.DataAccessException en caso de errores al persistir
+     * Actualiza los datos de un club identificado por {@code id}.
      */
     @Override
     public ClubResponseDto updateClub(long id, ClubEditRequestDto clubDto) {
@@ -164,7 +148,7 @@ public class ClubServiceImpl implements IClubService {
                 () -> new IllegalArgumentException("Club con id " + id + " no encontrado.")
         );
 
-        if (!usuarioEntity.getClub().getId().equals(clubEntity.getId())) {
+        if (usuarioEntity.getClub() == null || !usuarioEntity.getClub().getId().equals(clubEntity.getId())) {
             throw new IllegalArgumentException("No tienes permiso para actualizar este club.");
         }
 
@@ -195,12 +179,8 @@ public class ClubServiceImpl implements IClubService {
     }
 
     /**
-     * Desactiva (marca como inactivo) el club identificado por {@code id}. Comportamiento y requisitos: Se valida que el usuario autenticado tiene permiso sobre el club a desactivar. Se marca el campo {@code activo} como {@code false} y se persiste el cambio. Devuelve la representación actualizada {@link ClubResponseDto} del club.
-     *
-     * @param id identificador del club a desactivar
-     * @return {@link ClubResponseDto} con la información del club tras la desactivación
-     * @throws IllegalArgumentException si el club no existe o si el usuario no tiene permisos
-     * @throws org.springframework.dao.DataAccessException en caso de errores al persistir
+     * Desactiva (marca como inactivo) el club identificado por {@code id}.
+     * Envía notificación por correo y WebSocket a todos los usuarios del club.
      */
     @Override
     public ClubResponseDto desactivateClub(long id) {
@@ -208,9 +188,15 @@ public class ClubServiceImpl implements IClubService {
         ClubEntity clubEntity = clubRepository.findById(id).orElseThrow(
                 () -> new IllegalArgumentException("Club con id " + id + " no encontrado.")
         );
-        
+
         clubEntity.setActivo(false);
         ClubEntity updatedClub = clubRepository.save(clubEntity);
+
+        // Obtener todos los usuarios del club para notificar
+        List<UsuarioEntity> usuariosClub = usuarioRepository.findByClubId(updatedClub.getId());
+
+        notificarDesactivacionClub(updatedClub, usuariosClub);
+
         return ClubResponseDto
                 .builder()
                 .id(updatedClub.getId())
@@ -222,6 +208,10 @@ public class ClubServiceImpl implements IClubService {
                 .build();
     }
 
+    /**
+     * Crea un club y asigna un presidente.
+     * Cierra la sesión previa del usuario que asume la presidencia (tokenVersion++).
+     */
     public ClubResponseDto createClubWithPresidente(ClubCreateWithPresidenteRequestDto dto) {
 
         // 1. Validar usuario
@@ -247,14 +237,15 @@ public class ClubServiceImpl implements IClubService {
         // 4. Asignar club al usuario
         presidente.setClub(newClub);
 
-        // 5. Cambiar rol a PRESIDENTE
+        // 5. Cambiar rol a PRESIDENTE y cerrar sesión previa
         RolEntity rolPresidente = usuarioRepository.findRolByNombre("PRESIDENTE")
                 .orElseThrow(() -> new IllegalArgumentException("Rol PRESIDENTE no encontrado."));
         presidente.setRol(rolPresidente);
+        incrementarTokenVersion(presidente);
 
         usuarioRepository.save(presidente);
 
-        // 6. Respuesta DTO
+        // 6. Respuesta DTO (no envías notificación aquí según lo indicado)
         return ClubResponseDto.builder()
                 .id(newClub.getId())
                 .nombre(newClub.getNombre())
@@ -265,7 +256,10 @@ public class ClubServiceImpl implements IClubService {
                 .build();
     }
 
-
+    /**
+     * Elimina un socio del club, lo devuelve a INTERESADO y cancela sus inscripciones.
+     * Notifica al socio por correo y WebSocket.
+     */
     public void removeSocioFromClub(Long clubId, Long socioId) {
 
         // Usuario autenticado
@@ -274,37 +268,38 @@ public class ClubServiceImpl implements IClubService {
                 .orElseThrow(() -> new IllegalStateException("Usuario autenticado no encontrado."));
 
         // Validar que es presidente
-        if (!presidente.getRol().getNombre().equals("PRESIDENTE"))
+        if (!"PRESIDENTE".equals(presidente.getRol().getNombre())) {
             throw new IllegalArgumentException("No tienes permisos para gestionar socios.");
+        }
 
         // Validar club
         ClubEntity club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new IllegalArgumentException("El club no existe."));
 
         // Validar que el presidente pertenece al club
-        if (!presidente.getClub().getId().equals(clubId))
+        if (presidente.getClub() == null || !presidente.getClub().getId().equals(clubId)) {
             throw new IllegalArgumentException("No puedes administrar un club que no diriges.");
+        }
 
         // Usuario a eliminar
         UsuarioEntity socio = usuarioRepository.findById(socioId)
                 .orElseThrow(() -> new IllegalArgumentException("El socio no existe."));
 
         // Validar que pertenece al club
-        if (socio.getClub() == null || !socio.getClub().getId().equals(clubId))
+        if (socio.getClub() == null || !socio.getClub().getId().equals(clubId)) {
             throw new IllegalArgumentException("Ese usuario no pertenece a tu club.");
+        }
 
         // No eliminar al presidente
-        if (socio.getRol().getNombre().equals("PRESIDENTE"))
+        if ("PRESIDENTE".equals(socio.getRol().getNombre())) {
             throw new IllegalArgumentException("No puedes eliminar al presidente del club.");
+        }
 
-        // ============================================================
-        // CANCELAR INSCRIPCIONES DE CONVOCATORIA (ACEPTADAS / PENDIENTES)
-        // ============================================================
-
+        // Cancelar inscripciones en convocatorias (ACEPTADAS / PENDIENTES)
         List<InscripcionEntity> inscripciones = inscripcionRepository
                 .findByUsuarioId(socio.getId())
                 .stream()
-                .filter(i -> i.getConvocatoria() != null) // solo convocatorias
+                .filter(i -> i.getConvocatoria() != null)
                 .filter(i -> i.getEstado() == InscripcionEntity.EstadoInscripcion.ACEPTADA
                         || i.getEstado() == InscripcionEntity.EstadoInscripcion.PENDIENTE)
                 .toList();
@@ -312,38 +307,43 @@ public class ClubServiceImpl implements IClubService {
         for (InscripcionEntity ins : inscripciones) {
             ins.setEstado(InscripcionEntity.EstadoInscripcion.CANCELADA);
 
-            // restar cupo del club (opcional)
             var conv = ins.getConvocatoria();
             conv.setInscritos(conv.getInscritos() - 1);
         }
 
         inscripcionRepository.saveAll(inscripciones);
 
-        // ============================================================
-        // CAMBIAR ROL A INTERESADO Y QUITAR CLUB
-        // ============================================================
-
+        // Cambiar rol a INTERESADO, quitar club y cerrar sesión previa
         RolEntity rolInteresado = usuarioRepository.findRolByNombre("INTERESADO")
                 .orElseThrow(() -> new IllegalStateException("Rol INTERESADO no encontrado."));
 
         socio.setRol(rolInteresado);
         socio.setClub(null);
+        incrementarTokenVersion(socio);
 
         usuarioRepository.save(socio);
+
+        // Notificar al socio removido (correo + WebSocket)
+        notificarRemocionSocio(socio, club, presidente);
     }
 
-
+    /**
+     * Transfiere la presidencia a otro socio del mismo club.
+     * Cierra las sesiones de ambos (tokenVersion++) y notifica a ambos via correo y WebSocket.
+     */
     public void transferirPresidencia(Long clubId, Long nuevoPresidenteId) {
 
         String correoAuth = SecurityContextHolder.getContext().getAuthentication().getName();
         UsuarioEntity actualPresidente = usuarioRepository.findByCorreo(correoAuth)
                 .orElseThrow(() -> new IllegalStateException("Usuario autenticado no encontrado."));
 
-        if (!actualPresidente.getRol().getNombre().equals("PRESIDENTE"))
+        if (!"PRESIDENTE".equals(actualPresidente.getRol().getNombre())) {
             throw new IllegalArgumentException("No tienes permiso para transferir la presidencia.");
+        }
 
-        if (!actualPresidente.getClub().getId().equals(clubId))
+        if (actualPresidente.getClub() == null || !actualPresidente.getClub().getId().equals(clubId)) {
             throw new IllegalArgumentException("No perteneces a este club.");
+        }
 
         ClubEntity club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new IllegalArgumentException("Club no encontrado."));
@@ -351,8 +351,9 @@ public class ClubServiceImpl implements IClubService {
         UsuarioEntity nuevoPresidente = usuarioRepository.findById(nuevoPresidenteId)
                 .orElseThrow(() -> new IllegalArgumentException("Nuevo presidente no encontrado."));
 
-        if (nuevoPresidente.getClub() == null || !nuevoPresidente.getClub().getId().equals(clubId))
+        if (nuevoPresidente.getClub() == null || !nuevoPresidente.getClub().getId().equals(clubId)) {
             throw new IllegalArgumentException("El nuevo presidente no pertenece al club.");
+        }
 
         // Roles
         RolEntity rolPresidente = usuarioRepository.findRolByNombre("PRESIDENTE")
@@ -365,8 +366,159 @@ public class ClubServiceImpl implements IClubService {
         actualPresidente.setRol(rolSocio);
         nuevoPresidente.setRol(rolPresidente);
 
+        // Cerrar sesiones de ambos al cambiar rol
+        incrementarTokenVersion(actualPresidente);
+        incrementarTokenVersion(nuevoPresidente);
+
         usuarioRepository.save(actualPresidente);
         usuarioRepository.save(nuevoPresidente);
+
+        // Notificar a ambos (correo + WebSocket)
+        notificarTransferenciaPresidencia(actualPresidente, nuevoPresidente, club);
     }
 
+    /**
+     * Incrementa la versión de token de un usuario para invalidar sus sesiones previas.
+     */
+    private void incrementarTokenVersion(UsuarioEntity usuario) {
+        Integer versionActual = usuario.getTokenVersion() == null ? 0 : usuario.getTokenVersion();
+        usuario.setTokenVersion(versionActual + 1);
+    }
+
+    /**
+     * Notifica la desactivación de un club a todos sus usuarios.
+     */
+    private void notificarDesactivacionClub(ClubEntity club, List<UsuarioEntity> usuariosClub) {
+
+        String asunto = "Club desactivado - Rotaract D4465";
+        String mensajeCorreoBase = """
+                <h2>Notificación de desactivación de club</h2>
+                <p>Le informamos que el club <strong>%s</strong> (%s - %s) ha sido desactivado a nivel distrital.</p>
+                <p>A partir de este momento, el club ya no se considera activo en la plataforma Rotaract D4465.</p>
+                """.formatted(
+                club.getNombre(),
+                club.getDepartamento(),
+                club.getCiudad()
+        );
+
+        for (UsuarioEntity usuario : usuariosClub) {
+
+            // Correo
+            emailService.enviarCorreo(
+                    usuario.getCorreo(),
+                    asunto,
+                    mensajeCorreoBase
+            );
+
+            // WebSocket
+            notificacionService.enviarAUsuario(
+                    usuario.getId(),
+                    new NotificacionDto(
+                            "Club desactivado",
+                            "El club " + club.getNombre() + " ha sido desactivado a nivel distrital."
+                    )
+            );
+        }
+    }
+
+    /**
+     * Notifica al socio removido de un club.
+     */
+    private void notificarRemocionSocio(UsuarioEntity socio, ClubEntity club, UsuarioEntity presidente) {
+
+        String asunto = "Ha sido removido del club - Rotaract D4465";
+
+        String html = """
+                <h2>Remoción de club</h2>
+                <p>Le informamos que ha sido removido del club <strong>%s</strong> (%s - %s).</p>
+                <p>La acción fue realizada por el presidente del club: %s.</p>
+                <p>Su rol ha sido actualizado a <strong>INTERESADO</strong> en la plataforma.</p>
+                """.formatted(
+                club.getNombre(),
+                club.getDepartamento(),
+                club.getCiudad(),
+                presidente.getNombre()
+        );
+
+        emailService.enviarCorreo(
+                socio.getCorreo(),
+                asunto,
+                html
+        );
+
+        notificacionService.enviarAUsuario(
+                socio.getId(),
+                new NotificacionDto(
+                        "Remoción de club",
+                        "Ha sido removido del club " + club.getNombre() +
+                                ". Su rol ahora es INTERESADO."
+                )
+        );
+    }
+
+    /**
+     * Notifica la transferencia de presidencia a nuevo presidente y expresidente.
+     */
+    private void notificarTransferenciaPresidencia(UsuarioEntity anterior, UsuarioEntity nuevo, ClubEntity club) {
+
+        // Correo nuevo presidente
+        String asuntoNuevo = "Ha sido designado Presidente de club - Rotaract D4465";
+        String htmlNuevo = """
+                <h2>Felicitaciones, %s</h2>
+                <p>Ha sido designado como <strong>Presidente</strong> del club <strong>%s</strong> (%s - %s).</p>
+                <p>La presidencia le ha sido transferida por %s.</p>
+                """.formatted(
+                nuevo.getNombre(),
+                club.getNombre(),
+                club.getDepartamento(),
+                club.getCiudad(),
+                anterior.getNombre()
+        );
+
+        emailService.enviarCorreo(
+                nuevo.getCorreo(),
+                asuntoNuevo,
+                htmlNuevo
+        );
+
+        // Correo expresidente
+        String asuntoAnterior = "Transferencia de presidencia confirmada - Rotaract D4465";
+        String htmlAnterior = """
+                <h2>Hola %s</h2>
+                <p>Confirmamos que ha transferido la <strong>Presidencia</strong> del club <strong>%s</strong> (%s - %s)</p>
+                <p>al usuario <strong>%s</strong>.</p>
+                <p>Su rol ha sido actualizado a <strong>SOCIO</strong>.</p>
+                """.formatted(
+                anterior.getNombre(),
+                club.getNombre(),
+                club.getDepartamento(),
+                club.getCiudad(),
+                nuevo.getNombre()
+        );
+
+        emailService.enviarCorreo(
+                anterior.getCorreo(),
+                asuntoAnterior,
+                htmlAnterior
+        );
+
+        // WebSocket nuevo
+        notificacionService.enviarAUsuario(
+                nuevo.getId(),
+                new NotificacionDto(
+                        "Nueva presidencia asignada",
+                        "Ahora es presidente del club " + club.getNombre() + "."
+                )
+        );
+
+        // WebSocket anterior
+        notificacionService.enviarAUsuario(
+                anterior.getId(),
+                new NotificacionDto(
+                        "Transferencia de presidencia realizada",
+                        "Ha transferido la presidencia del club " + club.getNombre() +
+                                " a " + nuevo.getNombre() + "."
+                )
+        );
+    }
 }

@@ -5,6 +5,7 @@ import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.RolRepository;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
 import com.unapi.rotaract.rotaract_d4465_api.common.email.interfaces.IEmailService;
+import com.unapi.rotaract.rotaract_d4465_api.common.services.NotificacionService;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.entity.ConvocatoriaEntity;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.repository.ConvocatoriaRepository;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.dtos.InscripcionResponseDto;
@@ -14,6 +15,7 @@ import com.unapi.rotaract.rotaract_d4465_api.inscripcion.interfaces.IInscripcion
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.entity.ProyectoEntity;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.repository.ProyectoRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,9 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Servicio que gestiona inscripciones a convocatorias y proyectos.
- */
 @Service
 @RequiredArgsConstructor
 public class InscripcionServiceImpl implements IInscripcionService {
@@ -35,11 +34,16 @@ public class InscripcionServiceImpl implements IInscripcionService {
     private final InscripcionRepository inscripcionRepository;
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
+
     private final ConvocatoriaRepository convocatoriaRepository;
     private final ProyectoRepository proyectoRepository;
 
     private final IEmailService emailService;
+    private final NotificacionService notificacionService;
 
+    /**
+     * Obtiene el usuario autenticado desde el contexto de seguridad.
+     */
     private UsuarioEntity getUsuarioAutenticado() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String correo = auth.getName();
@@ -57,26 +61,26 @@ public class InscripcionServiceImpl implements IInscripcionService {
     public void inscribirseEnConvocatoria(Long convocatoriaId) {
 
         UsuarioEntity usuario = getUsuarioAutenticado();
-        String rolUsuario = usuario.getRol().getNombre();
-
         ConvocatoriaEntity convocatoria = convocatoriaRepository.findById(convocatoriaId)
                 .orElseThrow(() -> new IllegalArgumentException("Convocatoria no encontrada."));
+
+        if (!usuario.getRol().getNombre().equals("INTERESADO"))
+            throw new IllegalArgumentException("Solo los usuarios INTERESADO pueden inscribirse.");
 
         if (convocatoria.getCupoMaximo() - convocatoria.getInscritos() <= 0)
             throw new IllegalArgumentException("La convocatoria no tiene cupo disponible.");
 
-        if (!rolUsuario.equalsIgnoreCase("INTERESADO"))
-            throw new IllegalArgumentException("Solo usuarios INTERESADO pueden inscribirse a convocatorias.");
-
         boolean tieneActiva = inscripcionRepository
                 .existsByUsuarioIdAndConvocatoriaIsNotNullAndEstadoIn(
                         usuario.getId(),
-                        List.of(InscripcionEntity.EstadoInscripcion.PENDIENTE,
-                                InscripcionEntity.EstadoInscripcion.ACEPTADA)
+                        List.of(
+                                InscripcionEntity.EstadoInscripcion.PENDIENTE,
+                                InscripcionEntity.EstadoInscripcion.ACEPTADA
+                        )
                 );
 
         if (tieneActiva)
-            throw new IllegalArgumentException("Ya tienes una inscripción activa en una convocatoria.");
+            throw new IllegalArgumentException("Ya tienes una inscripción activa.");
 
         InscripcionEntity inscripcion = InscripcionEntity.builder()
                 .usuario(usuario)
@@ -87,17 +91,8 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
         inscripcionRepository.save(inscripcion);
 
-        // SUMA (convocatorias)
         convocatoria.setInscritos(convocatoria.getInscritos() + 1);
         convocatoriaRepository.save(convocatoria);
-
-        // CORREOS (igual que tu versión original)
-        emailService.enviarCorreo(
-                usuario.getCorreo(),
-                "Inscripción registrada - " + convocatoria.getTitulo(),
-                "<h1>¡Tu inscripción fue registrada!</h1>" +
-                        "<p>Convocatoria: <b>" + convocatoria.getTitulo() + "</b></p>"
-        );
     }
 
     // ============================================================
@@ -109,20 +104,20 @@ public class InscripcionServiceImpl implements IInscripcionService {
     public void inscribirseEnProyecto(Long proyectoId) {
 
         UsuarioEntity usuario = getUsuarioAutenticado();
-        String rolUsuario = usuario.getRol().getNombre();
-
         ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
                 .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
 
-        if (!(rolUsuario.equalsIgnoreCase("SOCIO") || rolUsuario.equalsIgnoreCase("PRESIDENTE")))
-            throw new IllegalArgumentException("Solo SOCIOS o PRESIDENTES pueden inscribirse.");
+        if (!(usuario.getRol().getNombre().equals("SOCIO") ||
+                usuario.getRol().getNombre().equals("PRESIDENTE")))
+            throw new IllegalArgumentException("Solo SOCIO y PRESIDENTE pueden inscribirse en proyectos.");
 
         if (proyecto.getCupoMaximo() - proyecto.getInscritos() <= 0)
             throw new IllegalArgumentException("El proyecto no tiene cupo disponible.");
 
-        if (usuario.getClub() == null || proyecto.getClub() == null ||
+        if (usuario.getClub() == null ||
+                proyecto.getClub() == null ||
                 !usuario.getClub().getId().equals(proyecto.getClub().getId()))
-            throw new IllegalArgumentException("Solo puedes inscribirte a proyectos de tu propio club.");
+            throw new IllegalArgumentException("Solo puedes inscribirte en proyectos de tu club.");
 
         if (inscripcionRepository.existsByUsuarioIdAndProyectoId(usuario.getId(), proyectoId))
             throw new IllegalArgumentException("Ya estás inscrito en este proyecto.");
@@ -136,17 +131,8 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
         inscripcionRepository.save(inscripcion);
 
-        // SUMA — AHORA IGUAL QUE CONVOCATORIAS
         proyecto.setInscritos(proyecto.getInscritos() + 1);
         proyectoRepository.save(proyecto);
-
-        // CORREOS (igual que tu versión original)
-        emailService.enviarCorreo(
-                usuario.getCorreo(),
-                "Inscripción registrada - " + proyecto.getTitulo(),
-                "<h1>Inscripción registrada</h1>" +
-                        "<p>Proyecto: <b>" + proyecto.getTitulo() + "</b></p>"
-        );
     }
 
     // ============================================================
@@ -164,14 +150,12 @@ public class InscripcionServiceImpl implements IInscripcionService {
                 .filter(i -> i.getConvocatoria() != null &&
                         i.getConvocatoria().getId().equals(convocatoriaId))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No se encontró inscripción."));
+                .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada."));
 
         if (inscripcion.getEstado() != InscripcionEntity.EstadoInscripcion.PENDIENTE)
-            throw new IllegalStateException("Solo puedes cancelar inscripciones PENDIENTES.");
+            throw new IllegalStateException("Solo se puede cancelar una inscripción pendiente.");
 
         ConvocatoriaEntity convocatoria = inscripcion.getConvocatoria();
-
-        // RESTA
         convocatoria.setInscritos(convocatoria.getInscritos() - 1);
         convocatoriaRepository.save(convocatoria);
 
@@ -193,14 +177,12 @@ public class InscripcionServiceImpl implements IInscripcionService {
                 .filter(i -> i.getProyecto() != null &&
                         i.getProyecto().getId().equals(proyectoId))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No se encontró inscripción."));
+                .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada."));
 
         if (inscripcion.getEstado() != InscripcionEntity.EstadoInscripcion.PENDIENTE)
-            throw new IllegalStateException("Solo puedes cancelar inscripciones PENDIENTES.");
+            throw new IllegalStateException("Solo se puede cancelar inscripciones pendientes.");
 
         ProyectoEntity proyecto = inscripcion.getProyecto();
-
-        // RESTA (igual que convocatorias)
         proyecto.setInscritos(proyecto.getInscritos() - 1);
         proyectoRepository.save(proyecto);
 
@@ -219,32 +201,56 @@ public class InscripcionServiceImpl implements IInscripcionService {
                 .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada."));
 
         UsuarioEntity usuarioInscrito = insc.getUsuario();
-
-        String correoPresidente = SecurityContextHolder.getContext().getAuthentication().getName();
-        UsuarioEntity presidente = usuarioRepository.findByCorreo(correoPresidente)
-                .orElseThrow(() -> new IllegalArgumentException("Presidente autenticado no encontrado."));
-
+        UsuarioEntity presidente = getUsuarioAutenticado();
         insc.setEstado(InscripcionEntity.EstadoInscripcion.ACEPTADA);
 
         // ----------------------------------------
-        // CONVOCATORIA — se mantiene igual
+        // ACEPTAR UNA CONVOCATORIA
         // ----------------------------------------
         if (insc.getConvocatoria() != null) {
 
             ConvocatoriaEntity convocatoria = insc.getConvocatoria();
 
+            // Actualizar club y rol
             usuarioInscrito.setClub(convocatoria.getClub());
+
             RolEntity rolSocio = rolRepository.findByNombre("SOCIO")
                     .orElseThrow(() -> new IllegalArgumentException("Rol SOCIO no encontrado."));
+
             usuarioInscrito.setRol(rolSocio);
+
+            // Cerrar sesión: incremento de versión de token
+            usuarioInscrito.setTokenVersion(usuarioInscrito.getTokenVersion() + 1);
 
             usuarioRepository.save(usuarioInscrito);
             inscripcionRepository.save(insc);
+
+            // Correo al usuario aceptado
+            emailService.enviarCorreo(
+                    usuarioInscrito.getCorreo(),
+                    "Tu inscripción ha sido aceptada",
+                    "<h1>Felicidades</h1><p>Has sido aceptado en la convocatoria: <b>" +
+                            convocatoria.getTitulo() +
+                            "</b></p>"
+            );
+
+            // Notificación WebSocket al usuario
+            notificacionService.enviarAUsuario(
+                    usuarioInscrito.getId(),
+                    "Tu inscripción a '" + convocatoria.getTitulo() + "' ha sido aceptada."
+            );
+
+            // Notificación WebSocket al presidente
+            notificacionService.enviarAUsuario(
+                    presidente.getId(),
+                    "Un nuevo socio ha sido aceptado en tu club."
+            );
+
             return;
         }
 
         // ----------------------------------------
-        // PROYECTO — NO SUMAR AQUÍ
+        // ACEPTAR UN PROYECTO
         // ----------------------------------------
         if (insc.getProyecto() != null) {
             inscripcionRepository.save(insc);
@@ -266,22 +272,15 @@ public class InscripcionServiceImpl implements IInscripcionService {
                 .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada."));
 
         UsuarioEntity usuarioInscrito = insc.getUsuario();
-        InscripcionEntity.EstadoInscripcion estadoAnterior = insc.getEstado();
 
         insc.setEstado(InscripcionEntity.EstadoInscripcion.RECHAZADA);
 
-        // ----------------------------------------
-        // RESTAR SI ERA PROYECTO (SIEMPRE)
-        // ----------------------------------------
         if (insc.getProyecto() != null) {
             ProyectoEntity proyecto = insc.getProyecto();
             proyecto.setInscritos(proyecto.getInscritos() - 1);
             proyectoRepository.save(proyecto);
         }
 
-        // ----------------------------------------
-        // RESTAR SI ERA CONVOCATORIA (SIEMPRE)
-        // ----------------------------------------
         if (insc.getConvocatoria() != null) {
             ConvocatoriaEntity convocatoria = insc.getConvocatoria();
             convocatoria.setInscritos(convocatoria.getInscritos() - 1);
@@ -289,6 +288,19 @@ public class InscripcionServiceImpl implements IInscripcionService {
         }
 
         inscripcionRepository.save(insc);
+
+        // Correo al usuario
+        emailService.enviarCorreo(
+                usuarioInscrito.getCorreo(),
+                "Tu inscripción ha sido rechazada",
+                "<h1>Inscripción rechazada</h1><p>Tu solicitud ha sido rechazada.</p>"
+        );
+
+        // Notificación WebSocket
+        notificacionService.enviarAUsuario(
+                usuarioInscrito.getId(),
+                "Tu inscripción ha sido rechazada."
+        );
     }
 
     // ============================================================

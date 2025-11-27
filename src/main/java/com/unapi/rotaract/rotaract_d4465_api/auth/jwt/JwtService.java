@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -35,22 +36,25 @@ public class JwtService {
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
-    public String generateToken(final UsuarioEntity usuarioEntity){
+    public String generateToken(final UsuarioEntity usuarioEntity) {
         return buildToken(usuarioEntity, expiration);
     }
 
-    public String generateRefreshToken(final UsuarioEntity userEntity){
+    public String generateRefreshToken(final UsuarioEntity userEntity) {
         return buildToken(userEntity, refreshExpiration);
     }
 
     private String buildToken(UsuarioEntity usuarioEntity, final Long tokenExpiration) {
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("id", usuarioEntity.getId());
+        claims.put("rol", "ROLE_" + usuarioEntity.getRol().getNombre().toUpperCase());
+        claims.put("nombre", usuarioEntity.getNombre());
+        claims.put("tokenVersion", usuarioEntity.getTokenVersion());
+
         return Jwts
                 .builder()
-                .setClaims(Map.of(
-                        "id", usuarioEntity.getId(),
-                        "rol", "ROLE_" + usuarioEntity.getRol().getNombre().toUpperCase(),
-                        "nombre", usuarioEntity.getNombre()
-                ))
+                .setClaims(claims)
                 .setSubject(usuarioEntity.getCorreo())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + tokenExpiration))
@@ -67,19 +71,23 @@ public class JwtService {
                 .getBody();
     }
 
-    public String extractUsername(String token){
+    public String extractUsername(String token) {
         return extractAllClaims(token).getSubject();
     }
 
-    public Date extractExpiration(String token){
+    public Date extractExpiration(String token) {
         return extractAllClaims(token).getExpiration();
     }
 
-    public Boolean isNotExpired(String token){
+    public Integer extractTokenVersion(String token) {
+        return extractAllClaims(token).get("tokenVersion", Integer.class);
+    }
+
+    public Boolean isNotExpired(String token) {
         return extractExpiration(token).after(new Date());
     }
 
-    public Boolean validateToken(String token, UserDetails userDetails){
+    public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername()) && isNotExpired(token));
     }
@@ -88,20 +96,19 @@ public class JwtService {
         return extractAllClaims(token).get("rol", String.class);
     }
 
-    // --------------------------------------------------------------------
-    // 🔥 TOKEN DE RECUPERACIÓN (10 minutos)
-    // --------------------------------------------------------------------
     public String generatePasswordResetToken(final UsuarioEntity usuarioEntity) {
 
-        long resetExpiration = 10 * 60 * 1000; // 10 minutos
+        long resetExpiration = 10 * 60 * 1000;
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("id", usuarioEntity.getId());
+        claims.put("rol", "ROLE_" + usuarioEntity.getRol().getNombre().toUpperCase());
+        claims.put("reset", true);
+        claims.put("nombre", usuarioEntity.getNombre());
+        claims.put("tokenVersion", usuarioEntity.getTokenVersion());
 
         return Jwts.builder()
-                .setClaims(Map.of(
-                        "id", usuarioEntity.getId(),
-                        "rol", "ROLE_" + usuarioEntity.getRol().getNombre().toUpperCase(),
-                        "reset", true,
-                        "nombre", usuarioEntity.getNombre()
-                ))
+                .setClaims(claims)
                 .setSubject(usuarioEntity.getCorreo())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + resetExpiration))

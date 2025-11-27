@@ -1,5 +1,6 @@
 package com.unapi.rotaract.rotaract_d4465_api.auth.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.RolEntity;
@@ -100,4 +101,6 @@ public interface UsuarioRepository extends JpaRepository<UsuarioEntity, Long> {
 
 
     UsuarioEntity findByRolNombre(String representante);
+
+    List<UsuarioEntity> findByClubId(Long id);
 }

@@ -75,6 +75,11 @@ public class UsuarioEntity {
     @Column(nullable = false)
     private Boolean activo = true;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Integer tokenVersion = 0;
+
+
     /**
      * Rol asociado al usuario. Relación muchos-a-uno que indica el rol
      * efectivo del usuario dentro de la plataforma (por ejemplo, "ADMIN",
