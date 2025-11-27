@@ -18,19 +18,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/**
- * Filtro que intercepta cada petición HTTP y realiza la autenticación
- * basada en tokens JWT.
- *
- * Valida:
- * - Firma
- * - Expiración
- * - Existencia del usuario
- * - Estado activo
- * - tokenVersion (invalida sesiones cuando cambia el rol o cualquier acción crítica)
- *
- * Rutas con prefijo "/auth" se consideran públicas.
- */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -46,13 +33,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // Permitir acceso a rutas públicas
-        if (request.getServletPath().startsWith("/auth")) {
+        String path = request.getServletPath();
+
+        // ----------------------------------------------------------
+        // PÚBLICOS: SOLO ESTOS ENDPOINTS
+        // ----------------------------------------------------------
+        if (path.equals("/auth/login")
+                || path.equals("/auth/register")
+                || path.equals("/auth/forgot")
+                || path.equals("/auth/reset")) {
+
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Leer Authorization Header
+        // ----------------------------------------------------------
+        // LEER HEADER
+        // ----------------------------------------------------------
         final String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -65,6 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        // Extraer usuario del token
         final String username;
         try {
             username = jwtService.extractUsername(jwtToken);
@@ -73,15 +71,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Si ya existe autenticación activa
+        // Si ya está autenticado, continuar
         if (username == null || SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
         }
 
         // Validar usuario en BD
-        UsuarioEntity usuario = usuarioRepository.findByCorreo(username)
-                .orElse(null);
+        UsuarioEntity usuario = usuarioRepository.findByCorreo(username).orElse(null);
 
         if (usuario == null) {
             returnUnauthorized(response, "User not found");
@@ -106,15 +103,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Integer versionToken = jwtService.extractTokenVersion(jwtToken);
         Integer versionActual = usuario.getTokenVersion();
 
-        if (versionToken == null || versionActual == null || !versionToken.equals(versionActual)) {
+        if (versionToken == null || !versionToken.equals(versionActual)) {
             returnUnauthorized(response, "Token invalidated by server");
             return;
         }
 
-        // Cargar UserDetails
+        // Registrar autenticación
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-        // Registrar autenticación
         UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(
                         userDetails,
