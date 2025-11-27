@@ -14,11 +14,17 @@ import com.unapi.rotaract.rotaract_d4465_api.proyecto.entity.ProyectoEntity;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.repository.ProyectoRepository;
 
 import lombok.RequiredArgsConstructor;
+
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -171,7 +177,7 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     }
 
     // ============================================================
-    // 4. MÉTODO ANTIGUO (NO SE TOCA)
+    // 4. MÉTODO ANTIGUO: MIS ASISTENCIAS
     // ============================================================
 
     @Override
@@ -188,7 +194,7 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
     }
 
     // ============================================================
-    // 5. NUEVO HISTORIAL DETALLADO
+    // 5. HISTORIAL DETALLADO
     // ============================================================
 
     @Override
@@ -203,6 +209,67 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
                 .sorted((a, b) -> b.getFechaRegistro().compareTo(a.getFechaRegistro()))
                 .map(this::mapHistorial)
                 .toList();
+    }
+
+    // ============================================================
+    // 6. EXPORTAR ASISTENCIAS A EXCEL
+    // ============================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportarExcelAsistencias(Long proyectoId) {
+
+        ProyectoEntity proyecto = proyectoRepository.findById(proyectoId)
+                .orElseThrow(() -> new IllegalArgumentException("Proyecto no encontrado."));
+
+        UsuarioEntity presidente = getUsuarioAutenticado();
+
+        if (proyecto.getClub() == null ||
+                presidente.getClub() == null ||
+                !proyecto.getClub().getId().equals(presidente.getClub().getId())) {
+
+            throw new IllegalStateException("No puedes exportar la asistencia de un proyecto que no pertenece a tu club.");
+        }
+
+        List<AsistenciaEntity> asistencias = asistenciaRepository.findByProyectoId(proyectoId);
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+
+            XSSFSheet sheet = workbook.createSheet("Asistencias");
+
+            // ====== CABECERA ======
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("ID Asistencia");
+            header.createCell(1).setCellValue("Usuario");
+            header.createCell(2).setCellValue("Correo");
+            header.createCell(3).setCellValue("Estado");
+            header.createCell(4).setCellValue("Fecha Registro");
+
+            int rowNum = 1;
+
+            for (AsistenciaEntity a : asistencias) {
+                Row row = sheet.createRow(rowNum++);
+
+                row.createCell(0).setCellValue(a.getId());
+                row.createCell(1).setCellValue(a.getUsuario().getNombre());
+                row.createCell(2).setCellValue(a.getUsuario().getCorreo());
+                row.createCell(3).setCellValue(a.getEstado().name());
+                row.createCell(4).setCellValue(a.getFechaRegistro().toString());
+            }
+
+            // Autoajustar columnas
+            for (int i = 0; i < 5; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            workbook.write(baos);
+
+            return baos.toByteArray();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error al generar Excel: " + e.getMessage(), e);
+        }
     }
 
     // ============================================================
@@ -250,7 +317,7 @@ public class AsistenciaServiceImpl implements IAsistenciaService {
         return new HistorialAsistenciaDto(
                 asistencia.getId(),
                 p != null ? p.getId() : null,
-                p != null ? p.getTitulo() : null,  // AJUSTA SI CAMBIA EL CAMPO
+                p != null ? p.getTitulo() : null,
                 asistencia.getEstado().name(),
                 asistencia.getFechaRegistro()
         );

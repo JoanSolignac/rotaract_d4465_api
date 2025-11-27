@@ -14,6 +14,7 @@ import java.util.List;
  * - Guardar la asistencia de un proyecto.
  * - Consultar las asistencias registradas de un proyecto.
  * - Consultar el historial de asistencias del usuario autenticado.
+ * - Exportar asistencias a Excel.
  */
 public interface IAsistenciaService {
 
@@ -58,4 +59,11 @@ public interface IAsistenciaService {
      */
     List<HistorialAsistenciaDto> obtenerHistorialAsistencias();
 
+    /**
+     * NUEVO MÉTODO — Exportar asistencias de un proyecto a un archivo Excel (.xlsx)
+     *
+     * @param proyectoId identificador del proyecto
+     * @return archivo Excel en bytes listo para descarga
+     */
+    byte[] exportarExcelAsistencias(Long proyectoId);
 }
