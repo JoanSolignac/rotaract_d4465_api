@@ -46,10 +46,10 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // 🔥 WEBSOCKET (NO incluir /api/v1 aquí)
+                        // Configuracion para WebSocket
                         .requestMatchers("/ws", "/ws/**", "/ws/info", "/topic/**").permitAll()
 
-                        // 🔓 ENDPOINTS PÚBLICOS
+                        // Endpoints publicos
                         .requestMatchers(
                                 "/auth/**",
                                 "/swagger-ui/**",
@@ -82,15 +82,17 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
+        // Se utilizan patrones de origen permitidos en lugar de origenes fijos
+        // para asegurar compatibilidad con credenciales activadas.
+        configuration.setAllowedOriginPatterns(List.of(
                 "http://localhost:5173",
                 "http://localhost:5174",
                 "http://localhost:3000",
                 "https://rotaractd4465front-production.up.railway.app",
-                "https://rotaract-d4465-frontend-production.up.railway.app"
+                "https://rotaract-d4465-frontend-production.up.railway.app",
+                "*" // Comodin para entornos de desarrollo
         ));
 
-        configuration.addAllowedOriginPattern("*"); // 🔥 necesario para SockJS
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
