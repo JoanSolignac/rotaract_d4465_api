@@ -5,12 +5,13 @@ import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.interfaces.IRepresentacionDistritalService;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.RolRepository;
-import com.unapi.rotaract.rotaract_d4465_api.common.dtos.NotificacionDto;
 import com.unapi.rotaract.rotaract_d4465_api.common.email.interfaces.IEmailService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -70,7 +71,7 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
         usuarioRepository.save(actualRD);
         usuarioRepository.save(nuevo);
 
-        // Notificaciones WebSocket
+        // Notificaciones WebSocket (Ahora con formato CAMBIO_ROL)
         enviarNotificacionesWebsocket(actualRD, nuevo);
 
         // Notificaciones por correo
@@ -79,27 +80,27 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
     }
 
     /**
-     * Enviar notificaciones WebSocket al nuevo y al antiguo representante.
+     * Enviar notificaciones WebSocket al nuevo y al antiguo representante con estructura JSON.
      */
     private void enviarNotificacionesWebsocket(UsuarioEntity anterior, UsuarioEntity nuevo) {
 
-        // Nuevo representante
+        // 1. Notificación al NUEVO Representante (Gana permisos)
         notificacionService.enviarAUsuario(
                 nuevo.getId(),
-                new NotificacionDto(
-                        "Designación como Representante Distrital",
-                        "Ha sido designado como representante distrital del Distrito Rotaract 4465. "
-                                + "La representación fue transferida por " + anterior.getNombre() + "."
+                Map.of(
+                        "titulo", "¡Designación como R.D.!",
+                        "mensaje", "Has sido designado como Representante Distrital por " + anterior.getNombre() + ". Tus permisos han sido actualizados.",
+                        "tipo", "CAMBIO_ROL"
                 )
         );
 
-        // Representante saliente
+        // 2. Notificación al ANTIGUO Representante (Pierde permisos, vuelve a Socio)
         notificacionService.enviarAUsuario(
                 anterior.getId(),
-                new NotificacionDto(
-                        "Transferencia de representación distrital realizada",
-                        "La representación distrital ha sido transferida a " + nuevo.getNombre() + ". "
-                                + "Su rol ha sido actualizado a SOCIO."
+                Map.of(
+                        "titulo", "Transferencia Exitosa",
+                        "mensaje", "Has transferido la representación a " + nuevo.getNombre() + ". Tu rol ha sido actualizado a SOCIO.",
+                        "tipo", "CAMBIO_ROL"
                 )
         );
     }

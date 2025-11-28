@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Servicio responsable de gestionar el ciclo de vida de las convocatorias.
@@ -179,10 +180,10 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
         ConvocatoriaEntity saved = convocatoriaRepository.save(entity);
 
         // ============================================================
-        // ENVÍO DE CORREOS
+        // ENVÍO DE CORREOS Y WEBSOCKETS
         // ============================================================
 
-        // 1) CORREO AL PRESIDENTE (buscado correctamente)
+        // 1) CORREO AL PRESIDENTE (Feedback de éxito)
         UsuarioEntity presidente = usuarioRepository
                 .findFirstByClubIdAndRol_NombreAndActivoTrue(club.getId(), "PRESIDENTE")
                 .orElse(null);
@@ -198,9 +199,14 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                     """.formatted(saved.getTitulo())
             );
 
+            // WebSocket estructurado
             notificacionService.enviarAUsuario(
                     presidente.getId(),
-                    "Nueva convocatoria creada: " + saved.getTitulo()
+                    Map.of(
+                            "titulo", "Convocatoria Creada",
+                            "mensaje", "La convocatoria '" + saved.getTitulo() + "' se publicó correctamente.",
+                            "tipo", "EXITO"
+                    )
             );
         }
 
@@ -220,9 +226,14 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
             );
         }
 
-        // 3) NOTIFICACIÓN GENERAL
+        // 3) NOTIFICACIÓN GENERAL (Estructurada)
         notificacionService.enviarAGeneral(
-                "Nueva convocatoria disponible: " + saved.getTitulo()
+                Map.of(
+                        "titulo", "Nueva Convocatoria",
+                        "mensaje", "Nueva convocatoria disponible: " + saved.getTitulo(),
+                        "tipo", "INFO",
+                        "extraId", saved.getId().toString()
+                )
         );
 
         return mapToResponse(saved);
@@ -261,9 +272,14 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                     """.formatted(c.getTitulo())
             );
 
+            // WebSocket estructurado
             notificacionService.enviarAUsuario(
                     presidente.getId(),
-                    "Convocatoria cancelada: " + c.getTitulo()
+                    Map.of(
+                            "titulo", "Convocatoria Cancelada",
+                            "mensaje", "La convocatoria '" + c.getTitulo() + "' ha sido cancelada.",
+                            "tipo", "ALERTA"
+                    )
             );
         }
     }

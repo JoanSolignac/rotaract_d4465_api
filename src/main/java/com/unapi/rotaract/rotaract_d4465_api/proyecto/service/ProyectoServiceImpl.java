@@ -2,7 +2,6 @@ package com.unapi.rotaract.rotaract_d4465_api.proyecto.service;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
-import com.unapi.rotaract.rotaract_d4465_api.common.dtos.NotificacionDto;
 import com.unapi.rotaract.rotaract_d4465_api.common.email.interfaces.IEmailService;
 import com.unapi.rotaract.rotaract_d4465_api.common.services.NotificacionService;
 import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
@@ -27,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -155,21 +155,26 @@ public class ProyectoServiceImpl implements IProyectoService {
 
             emailService.enviarCorreo(socio.getCorreo(), asunto, html);
 
+            // WebSocket Estructurado (Individual)
             notificacionService.enviarAUsuario(
                     socio.getId(),
-                    new NotificacionDto(
-                            "Nuevo proyecto",
-                            "Se creó el proyecto: " + proyecto.getTitulo()
+                    Map.of(
+                            "titulo", "Nuevo Proyecto",
+                            "mensaje", "Se ha creado el proyecto '" + proyecto.getTitulo() + "' en tu club.",
+                            "tipo", "INFO",
+                            "extraId", proyecto.getId().toString()
                     )
             );
         }
 
-        // Notificación general
+        // Notificación general al canal del Club (Estructurado)
         notificacionService.enviarAClub(
                 usuario.getClub().getId(),
-                new NotificacionDto(
-                        "Nuevo proyecto",
-                        "El proyecto " + proyecto.getTitulo() + " ha sido creado."
+                Map.of(
+                        "titulo", "Nuevo Proyecto",
+                        "mensaje", "El proyecto '" + proyecto.getTitulo() + "' ha sido creado.",
+                        "tipo", "INFO",
+                        "extraId", proyecto.getId().toString()
                 )
         );
 
@@ -214,20 +219,26 @@ public class ProyectoServiceImpl implements IProyectoService {
 
             emailService.enviarCorreo(socio.getCorreo(), asunto, html);
 
+            // WebSocket Estructurado (Individual)
             notificacionService.enviarAUsuario(
                     socio.getId(),
-                    new NotificacionDto(
-                            "Proyecto actualizado",
-                            "El proyecto " + p.getTitulo() + " ha sido modificado."
+                    Map.of(
+                            "titulo", "Proyecto Actualizado",
+                            "mensaje", "El proyecto '" + p.getTitulo() + "' ha sido modificado.",
+                            "tipo", "INFO",
+                            "extraId", p.getId().toString()
                     )
             );
         }
 
+        // WebSocket General
         notificacionService.enviarAClub(
                 p.getClub().getId(),
-                new NotificacionDto(
-                        "Proyecto actualizado",
-                        "El proyecto " + p.getTitulo() + " ha sido modificado."
+                Map.of(
+                        "titulo", "Proyecto Actualizado",
+                        "mensaje", "El proyecto '" + p.getTitulo() + "' ha sido modificado.",
+                        "tipo", "INFO",
+                        "extraId", p.getId().toString()
                 )
         );
 
@@ -278,20 +289,25 @@ public class ProyectoServiceImpl implements IProyectoService {
 
             emailService.enviarCorreo(socio.getCorreo(), asunto, html);
 
+            // WebSocket Estructurado (ALERTA)
             notificacionService.enviarAUsuario(
                     socio.getId(),
-                    new NotificacionDto(
-                            "Proyecto cancelado",
-                            "El proyecto " + p.getTitulo() + " ha sido cancelado."
+                    Map.of(
+                            "titulo", "Proyecto Cancelado",
+                            "mensaje", "El proyecto '" + p.getTitulo() + "' ha sido cancelado.",
+                            "tipo", "ALERTA",
+                            "extraId", p.getId().toString()
                     )
             );
         }
 
         notificacionService.enviarAClub(
                 p.getClub().getId(),
-                new NotificacionDto(
-                        "Proyecto cancelado",
-                        "El proyecto " + p.getTitulo() + " ha sido cancelado."
+                Map.of(
+                        "titulo", "Proyecto Cancelado",
+                        "mensaje", "El proyecto '" + p.getTitulo() + "' ha sido cancelado.",
+                        "tipo", "ALERTA",
+                        "extraId", p.getId().toString()
                 )
         );
     }
@@ -325,20 +341,25 @@ public class ProyectoServiceImpl implements IProyectoService {
 
             emailService.enviarCorreo(socio.getCorreo(), asunto, html);
 
+            // WebSocket Estructurado (EXITO)
             notificacionService.enviarAUsuario(
                     socio.getId(),
-                    new NotificacionDto(
-                            "Proyecto finalizado",
-                            "El proyecto " + p.getTitulo() + " ha finalizado."
+                    Map.of(
+                            "titulo", "Proyecto Finalizado",
+                            "mensaje", "El proyecto '" + p.getTitulo() + "' ha concluido exitosamente.",
+                            "tipo", "EXITO",
+                            "extraId", p.getId().toString()
                     )
             );
         }
 
         notificacionService.enviarAClub(
                 p.getClub().getId(),
-                new NotificacionDto(
-                        "Proyecto finalizado",
-                        "El proyecto " + p.getTitulo() + " ha finalizado correctamente."
+                Map.of(
+                        "titulo", "Proyecto Finalizado",
+                        "mensaje", "El proyecto '" + p.getTitulo() + "' ha finalizado correctamente.",
+                        "tipo", "EXITO",
+                        "extraId", p.getId().toString()
                 )
         );
     }
