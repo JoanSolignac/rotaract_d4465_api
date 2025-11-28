@@ -12,7 +12,7 @@ public class NotificacionService {
 
     /**
      * Envía una notificación a un usuario específico.
-     * Se publicará en: /topic/notificaciones/usuario/{usuarioId}
+     * Canal: /topic/notificaciones/usuario/{usuarioId}
      */
     public void enviarAUsuario(Long usuarioId, Object payload) {
         messagingTemplate.convertAndSend(
@@ -23,11 +23,23 @@ public class NotificacionService {
 
     /**
      * Envía una notificación general a todos los suscritos.
-     * Se publicará en: /topic/notificaciones/general
+     * Canal: /topic/notificaciones/general
      */
     public void enviarAGeneral(Object payload) {
         messagingTemplate.convertAndSend(
                 "/topic/notificaciones/general",
+                payload
+        );
+    }
+
+    /**
+     * NUEVO:
+     * Envía una notificación a todos los miembros de un club.
+     * Canal: /topic/notificaciones/club/{clubId}
+     */
+    public void enviarAClub(Long clubId, Object payload) {
+        messagingTemplate.convertAndSend(
+                "/topic/notificaciones/club/" + clubId,
                 payload
         );
     }
