@@ -2,6 +2,9 @@ package com.unapi.rotaract.rotaract_d4465_api.proyecto.service;
 
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
+import com.unapi.rotaract.rotaract_d4465_api.common.dtos.NotificacionDto;
+import com.unapi.rotaract.rotaract_d4465_api.common.email.interfaces.IEmailService;
+import com.unapi.rotaract.rotaract_d4465_api.common.services.NotificacionService;
 import com.unapi.rotaract.rotaract_d4465_api.evento.entity.EventoEntity;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.dtos.ProyectoCreateRequestDto;
@@ -12,6 +15,7 @@ import com.unapi.rotaract.rotaract_d4465_api.proyecto.interfaces.IProyectoServic
 import com.unapi.rotaract.rotaract_d4465_api.proyecto.repository.ProyectoRepository;
 
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -34,6 +39,8 @@ public class ProyectoServiceImpl implements IProyectoService {
     private final ProyectoRepository proyectoRepository;
     private final UsuarioRepository usuarioRepository;
     private final InscripcionRepository inscripcionRepository;
+    private final IEmailService emailService;
+    private final NotificacionService notificacionService;
 
     // ============================================================
     // LISTAR TODOS LOS PROYECTOS
@@ -77,14 +84,15 @@ public class ProyectoServiceImpl implements IProyectoService {
         Long clubId = usuario.getClub().getId();
 
         Page<ProyectoEntity> proyectosClub =
-                new PageImpl<>(proyectoRepository.findByClubId(clubId),
+                new PageImpl<>(
+                        proyectoRepository.findByClubId(clubId),
                         PageRequest.of(page, size),
                         proyectoRepository.findByClubId(clubId).size()
                 );
 
         List<ProyectoResponseDto> disponibles = proyectosClub.stream()
                 .filter(p -> !inscripcionRepository.existsByUsuarioIdAndProyectoId(usuario.getId(), p.getId()))
-                .map(p -> mapToResponse(p, true)) // disponible = true
+                .map(p -> mapToResponse(p, true))
                 .toList();
 
         return new PageImpl<>(
@@ -106,7 +114,7 @@ public class ProyectoServiceImpl implements IProyectoService {
     }
 
     // ============================================================
-    // CREAR
+    // CREAR PROYECTO
     // ============================================================
 
     @Override
@@ -137,17 +145,46 @@ public class ProyectoServiceImpl implements IProyectoService {
         proyecto.setFechaFinProyecto(dto.fechaFinProyecto());
         proyecto.setEstadoProyecto(ProyectoEntity.EstadoProyecto.EN_POSTULACION);
 
-        // Nuevos campos — asistencia desactivada al crear
         proyecto.setAsistenciaActiva(false);
         proyecto.setAsistenciaCerrada(false);
 
         proyectoRepository.save(proyecto);
 
+        // ========================================================
+        // NOTIFICAR POR CORREO A TODOS LOS SOCIOS DEL CLUB
+        // ========================================================
+
+        List<UsuarioEntity> socios = usuarioRepository.findByClubId(usuario.getClub().getId());
+
+        for (UsuarioEntity socio : socios) {
+
+            String asunto = "Nuevo proyecto creado en tu club";
+
+            String html = """
+                    <h2>Nuevo proyecto creado</h2>
+                    <p>Se ha creado el proyecto <strong>%s</strong> en tu club.</p>
+                    <p>Descripción: %s</p>
+                    """.formatted(
+                    proyecto.getTitulo(),
+                    proyecto.getDescripcion()
+            );
+
+            emailService.enviarCorreo(socio.getCorreo(), asunto, html);
+
+            notificacionService.enviarAUsuario(
+                    socio.getId(),
+                    new NotificacionDto(
+                            "Nuevo proyecto",
+                            "Se creó el proyecto: " + proyecto.getTitulo()
+                    )
+            );
+        }
+
         return mapToResponse(proyecto, false);
     }
 
     // ============================================================
-    // EDITAR
+    // EDITAR PROYECTO
     // ============================================================
 
     @Override
@@ -170,6 +207,32 @@ public class ProyectoServiceImpl implements IProyectoService {
 
         proyectoRepository.save(p);
 
+        // ========================================================
+        // NOTIFICAR EDICIÓN POR CORREO Y WEBSOCKET
+        // ========================================================
+
+        List<UsuarioEntity> socios = usuarioRepository.findByClubId(p.getClub().getId());
+
+        for (UsuarioEntity socio : socios) {
+
+            String asunto = "Actualización de proyecto";
+
+            String html = """
+                    <h2>Proyecto actualizado</h2>
+                    <p>El proyecto <strong>%s</strong> ha sido actualizado.</p>
+                    """.formatted(p.getTitulo());
+
+            emailService.enviarCorreo(socio.getCorreo(), asunto, html);
+
+            notificacionService.enviarAUsuario(
+                    socio.getId(),
+                    new NotificacionDto(
+                            "Proyecto actualizado",
+                            "El proyecto " + p.getTitulo() + " ha sido modificado."
+                    )
+            );
+        }
+
         return mapToResponse(p, false);
     }
 
@@ -180,14 +243,46 @@ public class ProyectoServiceImpl implements IProyectoService {
     @Override
     @Transactional
     public void cancelarProyecto(Long id) {
+
         ProyectoEntity p = proyectoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proyecto no encontrado."));
+
+        // **VALIDACIÓN CLAVE**
+        if (LocalDate.now().isAfter(p.getFechaInicioProyecto())) {
+            throw new RuntimeException("No se puede cancelar un proyecto que ya está en ejecución.");
+        }
 
         p.setEstado(EventoEntity.EstadoEvento.CANCELADO);
         p.setEstadoProyecto(ProyectoEntity.EstadoProyecto.CANCELADO);
         p.cerrarAsistencia();
 
         proyectoRepository.save(p);
+
+        // ========================================================
+        // NOTIFICAR CANCELACIÓN
+        // ========================================================
+
+        List<UsuarioEntity> socios = usuarioRepository.findByClubId(p.getClub().getId());
+
+        for (UsuarioEntity socio : socios) {
+
+            String asunto = "Proyecto cancelado";
+
+            String html = """
+                    <h2>Proyecto cancelado</h2>
+                    <p>El proyecto <strong>%s</strong> ha sido cancelado.</p>
+                    """.formatted(p.getTitulo());
+
+            emailService.enviarCorreo(socio.getCorreo(), asunto, html);
+
+            notificacionService.enviarAUsuario(
+                    socio.getId(),
+                    new NotificacionDto(
+                            "Proyecto cancelado",
+                            "El proyecto " + p.getTitulo() + " ha sido cancelado."
+                    )
+            );
+        }
     }
 
     // ============================================================
@@ -197,6 +292,7 @@ public class ProyectoServiceImpl implements IProyectoService {
     @Override
     @Transactional
     public void finalizarProyecto(Long id) {
+
         ProyectoEntity p = proyectoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proyecto no encontrado."));
 
@@ -205,6 +301,18 @@ public class ProyectoServiceImpl implements IProyectoService {
         p.cerrarAsistencia();
 
         proyectoRepository.save(p);
+
+        List<UsuarioEntity> socios = usuarioRepository.findByClubId(p.getClub().getId());
+
+        for (UsuarioEntity socio : socios) {
+            notificacionService.enviarAUsuario(
+                    socio.getId(),
+                    new NotificacionDto(
+                            "Proyecto finalizado",
+                            "El proyecto " + p.getTitulo() + " ha finalizado."
+                    )
+            );
+        }
     }
 
     // ============================================================
