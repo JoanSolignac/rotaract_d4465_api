@@ -171,4 +171,22 @@ public class GlobalHandlerException {
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
+
+    // -------------------------------------------------------------------------
+    // 400 - BAD REQUEST (IllegalStateException)
+    // -------------------------------------------------------------------------
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ExceptionResponseDto> handleIllegalStateException(IllegalStateException ex, HttpServletRequest request) {
+        logger.warn("Error de estado: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ExceptionResponseDto(
+                        LocalDate.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        List.of(ex.getMessage()),
+                        ex.getMessage()
+                )
+        );
+    }
+
 }
