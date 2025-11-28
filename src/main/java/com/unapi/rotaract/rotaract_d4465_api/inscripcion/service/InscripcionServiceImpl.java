@@ -93,6 +93,14 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
         convocatoria.setInscritos(convocatoria.getInscritos() + 1);
         convocatoriaRepository.save(convocatoria);
+
+        // --- NOTIFICACIÓN WEBSOCKET AL PRESIDENTE ---
+        if (convocatoria.getClub() != null) {
+            notificarPresidente(
+                    convocatoria.getClub(),
+                    "Nueva inscripción: " + usuario.getNombre() + " se ha postulado a '" + convocatoria.getTitulo() + "'"
+            );
+        }
     }
 
     // ============================================================
@@ -133,6 +141,29 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
         proyecto.setInscritos(proyecto.getInscritos() + 1);
         proyectoRepository.save(proyecto);
+
+        // --- NOTIFICACIÓN WEBSOCKET AL PRESIDENTE ---
+        if (proyecto.getClub() != null) {
+            notificarPresidente(
+                    proyecto.getClub(),
+                    "El socio " + usuario.getNombre() + " se inscribió al proyecto '" + proyecto.getTitulo() + "'"
+            );
+        }
+    }
+
+    // ============================================================
+    // MÉTODO AUXILIAR PARA NOTIFICAR AL PRESIDENTE
+    // ============================================================
+    private void notificarPresidente(com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity club, String mensaje) {
+        // Buscamos todos los usuarios del club
+        List<UsuarioEntity> miembros = usuarioRepository.findByClubId(club.getId());
+
+        // Filtramos quién es el presidente y enviamos la notificación
+        for (UsuarioEntity miembro : miembros) {
+            if (miembro.getRol() != null && "PRESIDENTE".equalsIgnoreCase(miembro.getRol().getNombre())) {
+                notificacionService.enviarAUsuario(miembro.getId(), mensaje);
+            }
+        }
     }
 
     // ============================================================
@@ -234,16 +265,16 @@ public class InscripcionServiceImpl implements IInscripcionService {
                             "</b></p>"
             );
 
-            // Notificación WebSocket al usuario
+            // Notificación WebSocket al USUARIO aceptado (usando su ID)
             notificacionService.enviarAUsuario(
                     usuarioInscrito.getId(),
                     "Tu inscripción a '" + convocatoria.getTitulo() + "' ha sido aceptada."
             );
 
-            // Notificación WebSocket al presidente
+            // Feedback WebSocket al PRESIDENTE (el que hizo la acción)
             notificacionService.enviarAUsuario(
                     presidente.getId(),
-                    "Un nuevo socio ha sido aceptado en tu club."
+                    "Nuevo socio aceptado correctamente."
             );
 
             return;
@@ -254,6 +285,13 @@ public class InscripcionServiceImpl implements IInscripcionService {
         // ----------------------------------------
         if (insc.getProyecto() != null) {
             inscripcionRepository.save(insc);
+
+            // Notificar aceptación al usuario inscrito
+            notificacionService.enviarAUsuario(
+                    usuarioInscrito.getId(),
+                    "Tu inscripción al proyecto '" + insc.getProyecto().getTitulo() + "' ha sido aceptada."
+            );
+
             return;
         }
 
@@ -275,14 +313,18 @@ public class InscripcionServiceImpl implements IInscripcionService {
 
         insc.setEstado(InscripcionEntity.EstadoInscripcion.RECHAZADA);
 
+        String tituloEvento = "";
+
         if (insc.getProyecto() != null) {
             ProyectoEntity proyecto = insc.getProyecto();
+            tituloEvento = proyecto.getTitulo();
             proyecto.setInscritos(proyecto.getInscritos() - 1);
             proyectoRepository.save(proyecto);
         }
 
         if (insc.getConvocatoria() != null) {
             ConvocatoriaEntity convocatoria = insc.getConvocatoria();
+            tituloEvento = convocatoria.getTitulo();
             convocatoria.setInscritos(convocatoria.getInscritos() - 1);
             convocatoriaRepository.save(convocatoria);
         }
@@ -293,18 +335,18 @@ public class InscripcionServiceImpl implements IInscripcionService {
         emailService.enviarCorreo(
                 usuarioInscrito.getCorreo(),
                 "Tu inscripción ha sido rechazada",
-                "<h1>Inscripción rechazada</h1><p>Tu solicitud ha sido rechazada.</p>"
+                "<h1>Inscripción rechazada</h1><p>Tu solicitud para <b>" + tituloEvento + "</b> ha sido rechazada.</p>"
         );
 
-        // Notificación WebSocket
+        // Notificación WebSocket al usuario rechazado
         notificacionService.enviarAUsuario(
                 usuarioInscrito.getId(),
-                "Tu inscripción ha sido rechazada."
+                "Tu inscripción a '" + tituloEvento + "' ha sido rechazada."
         );
     }
 
     // ============================================================
-    // LISTADOS
+    // LISTADOS (Sin cambios)
     // ============================================================
 
     @Override
