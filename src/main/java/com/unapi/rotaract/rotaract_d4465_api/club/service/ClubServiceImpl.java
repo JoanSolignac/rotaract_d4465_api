@@ -23,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -191,23 +192,75 @@ public class ClubServiceImpl implements IClubService {
 
     /**
      * Desactiva (marca como inactivo) el club identificado por {@code id}.
-     * Envía notificación por correo y WebSocket a todos los usuarios del club.
+     *
+     * Lógica de negocio:
+     * - Marca el club como inactivo.
+     * - Obtiene a todos los usuarios del club (incluyendo presidente).
+     * - Cancela sus inscripciones activas (ACEPTADAS / PENDIENTES) en convocatorias.
+     * - Cambia su rol a INTERESADO, limpia la referencia al club y cierra sus sesiones (tokenVersion++).
+     * - Notifica a cada usuario (correo + WebSocket) indicando la desactivación y el cambio de rol.
      */
     @Override
+    @Transactional
     public ClubResponseDto desactivateClub(long id) {
+
+        if (id <= 0) {
+            throw new IllegalArgumentException("El id debe ser mayor que 0.");
+        }
 
         ClubEntity clubEntity = clubRepository.findById(id).orElseThrow(
                 () -> new IllegalArgumentException("Club con id " + id + " no encontrado.")
         );
 
+        // 1. Desactivar club
         clubEntity.setActivo(false);
         ClubEntity updatedClub = clubRepository.save(clubEntity);
 
-        // Obtener todos los usuarios del club para notificar
+        // 2. Obtener todos los usuarios del club
         List<UsuarioEntity> usuariosClub = usuarioRepository.findByClubId(updatedClub.getId());
 
-        notificarDesactivacionClub(updatedClub, usuariosClub);
+        if (!usuariosClub.isEmpty()) {
 
+            // 3. Rol INTERESADO
+            RolEntity rolInteresado = usuarioRepository.findRolByNombre("INTERESADO")
+                    .orElseThrow(() -> new IllegalStateException("Rol INTERESADO no encontrado."));
+
+            // 4. Procesar cada usuario
+            for (UsuarioEntity usuario : usuariosClub) {
+
+                // 4.1 Cancelar inscripciones activas (ACEPTADAS / PENDIENTES)
+                List<InscripcionEntity> inscripciones = inscripcionRepository
+                        .findByUsuarioId(usuario.getId())
+                        .stream()
+                        .filter(i -> i.getConvocatoria() != null)
+                        .filter(i -> i.getEstado() == InscripcionEntity.EstadoInscripcion.ACEPTADA
+                                || i.getEstado() == InscripcionEntity.EstadoInscripcion.PENDIENTE)
+                        .toList();
+
+                for (InscripcionEntity ins : inscripciones) {
+                    ins.setEstado(InscripcionEntity.EstadoInscripcion.CANCELADA);
+
+                    var conv = ins.getConvocatoria();
+                    if (conv != null) {
+                        conv.setInscritos(conv.getInscritos() - 1);
+                    }
+                }
+
+                inscripcionRepository.saveAll(inscripciones);
+
+                // 4.2 Cambiar rol a INTERESADO, quitar club y cerrar sesión previa
+                usuario.setRol(rolInteresado);
+                usuario.setClub(null);
+                incrementarTokenVersion(usuario);
+
+                usuarioRepository.save(usuario);
+            }
+
+            // 5. Notificar por correo y WebSocket a todos los usuarios del club
+            notificarDesactivacionClub(updatedClub, usuariosClub);
+        }
+
+        // 6. DTO de respuesta
         return ClubResponseDto
                 .builder()
                 .id(updatedClub.getId())
@@ -256,7 +309,7 @@ public class ClubServiceImpl implements IClubService {
 
         usuarioRepository.save(presidente);
 
-        // 6. Respuesta DTO (no envías notificación aquí según lo indicado)
+        // 6. Respuesta DTO
         return ClubResponseDto.builder()
                 .id(newClub.getId())
                 .nombre(newClub.getNombre())
@@ -319,7 +372,9 @@ public class ClubServiceImpl implements IClubService {
             ins.setEstado(InscripcionEntity.EstadoInscripcion.CANCELADA);
 
             var conv = ins.getConvocatoria();
-            conv.setInscritos(conv.getInscritos() - 1);
+            if (conv != null) {
+                conv.setInscritos(conv.getInscritos() - 1);
+            }
         }
 
         inscripcionRepository.saveAll(inscripciones);
@@ -398,27 +453,33 @@ public class ClubServiceImpl implements IClubService {
 
     /**
      * Notifica la desactivación de un club a todos sus usuarios.
+     *
+     * Envía:
+     * - Correo electrónico indicando que el club fue desactivado y que su rol ahora es INTERESADO.
+     * - Notificación WebSocket al canal del usuario.
      */
     private void notificarDesactivacionClub(ClubEntity club, List<UsuarioEntity> usuariosClub) {
 
         String asunto = "Club desactivado - Rotaract D4465";
-        String mensajeCorreoBase = """
-                <h2>Notificación de desactivación de club</h2>
-                <p>Le informamos que el club <strong>%s</strong> (%s - %s) ha sido desactivado a nivel distrital.</p>
-                <p>A partir de este momento, el club ya no se considera activo en la plataforma Rotaract D4465.</p>
-                """.formatted(
-                club.getNombre(),
-                club.getDepartamento(),
-                club.getCiudad()
-        );
 
         for (UsuarioEntity usuario : usuariosClub) {
+
+            String mensajeCorreo = """
+                    <h2>Notificación de desactivación de club</h2>
+                    <p>Le informamos que el club <strong>%s</strong> (%s - %s) ha sido desactivado a nivel distrital.</p>
+                    <p>A partir de este momento, el club ya no se considera activo en la plataforma Rotaract D4465.</p>
+                    <p>Su rol ha sido actualizado a <strong>INTERESADO</strong> y ya no se encuentra asociado a ningún club.</p>
+                    """.formatted(
+                    club.getNombre(),
+                    club.getDepartamento(),
+                    club.getCiudad()
+            );
 
             // Correo
             emailService.enviarCorreo(
                     usuario.getCorreo(),
                     asunto,
-                    mensajeCorreoBase
+                    mensajeCorreo
             );
 
             // WebSocket
@@ -426,7 +487,7 @@ public class ClubServiceImpl implements IClubService {
                     usuario.getId(),
                     new NotificacionDto(
                             "Club desactivado",
-                            "El club " + club.getNombre() + " ha sido desactivado a nivel distrital."
+                            "El club " + club.getNombre() + " ha sido desactivado. Ahora eres INTERESADO y ya no perteneces a ningún club."
                     )
             );
         }

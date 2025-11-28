@@ -12,10 +12,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
-
-// ❗ IMPORT CORRECTO PARA QUE SPRING PUEDA LEER JSON
-import org.springframework.web.bind.annotation.RequestBody;
-
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -185,13 +181,17 @@ public class ClubController {
     // -------------------------------------------------------------------------
     @PatchMapping("/deactivate/{id}")
     @PreAuthorize("hasRole('REPRESENTANTE DISTRITAL')")
-    @Operation(summary = "Desactivar club", description = "Marca un club como inactivo.")
+    @Operation(
+            summary = "Desactivar club",
+            description = "Marca un club como inactivo, libera a todos sus miembros y los pasa a INTERESADO."
+    )
     public ResponseEntity<?> deactivateClub(
             @Valid @PathVariable long id
     ){
-        clubService.desactivateClub(id);
+        ClubResponseDto updated = clubService.desactivateClub(id);
         return ResponseEntity.ok(Map.of(
-                "message", "Club desactivado exitosamente"
+                "message", "Club desactivado exitosamente. Todos los miembros han sido liberados y pasados a INTERESADO.",
+                "club", updated
         ));
     }
 

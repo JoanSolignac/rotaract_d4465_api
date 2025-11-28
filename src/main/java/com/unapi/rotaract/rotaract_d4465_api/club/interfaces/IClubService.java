@@ -43,7 +43,6 @@ public interface IClubService {
      * (por ejemplo, nombre no vacío) y persistir la entidad correspondiente.
      * Esta operación normalmente se ejecuta en una transacción.
      *
-     *
      * @param clubDto DTO con los datos del club a crear. No debe ser {@code null}.
      *                Se espera que contenga los campos mínimos requeridos por la regla de negocio.
      * @throws IllegalArgumentException si {@code clubDto} es {@code null} o contiene
@@ -85,9 +84,12 @@ public interface IClubService {
     /**
      * Desactiva (marca como inactivo) el club identificado por {@code id}.
      *
-     * Esta operación típicamente no elimina físicamente la entidad, sino que
-     * cambia un flag/status que evita que el club aparezca en listados activos.
-     * La implementación debe persistir el cambio y devolver el estado resultante.
+     * Esta operación:
+     * - Marca el club como inactivo.
+     * - Libera a todos los usuarios asociados al club (eliminando la referencia al club).
+     * - Cambia sus roles a INTERESADO e invalida sus sesiones (tokenVersion++).
+     * - Cancela sus inscripciones activas en convocatorias.
+     * - Notifica a todos los miembros (incluyendo presidente) por correo y WebSocket.
      *
      * @param id identificador del club a desactivar (debe ser mayor que 0)
      * @return {@link ClubResponseDto} con la información del club luego de la desactivación
