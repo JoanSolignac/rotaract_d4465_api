@@ -30,7 +30,7 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
         UsuarioEntity actualRD = usuarioRepository.findByCorreo(correoAuth)
                 .orElseThrow(() -> new IllegalStateException("Usuario autenticado no encontrado"));
 
-        // Validar que sea representante distrital
+        // Validar que sea representante distrital actual
         if (!"REPRESENTANTE DISTRITAL".equals(actualRD.getRol().getNombre())) {
             throw new IllegalArgumentException("Solo el representante distrital puede realizar esta acción.");
         }
@@ -44,7 +44,7 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
             throw new IllegalArgumentException("Debe transferir su presidencia antes de asumir la representación distrital.");
         }
 
-        // Solo SOCIO o INTERESADO
+        // Solo SOCIO o INTERESADO pueden ser elegidos
         boolean esElegible =
                 "SOCIO".equals(nuevo.getRol().getNombre()) ||
                         "INTERESADO".equals(nuevo.getRol().getNombre());
@@ -53,36 +53,53 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
             throw new IllegalArgumentException("Solo un SOCIO o un INTERESADO puede ser representante distrital.");
         }
 
-        // Roles
+        // --- Obtención de Roles ---
         RolEntity rolRD = rolRepository.findByNombre("REPRESENTANTE DISTRITAL")
                 .orElseThrow(() -> new IllegalStateException("Rol REPRESENTANTE DISTRITAL no encontrado."));
 
         RolEntity rolSocio = rolRepository.findByNombre("SOCIO")
                 .orElseThrow(() -> new IllegalStateException("Rol SOCIO no encontrado."));
 
-        // Transferir rol (el RD saliente queda como SOCIO)
-        actualRD.setRol(rolSocio);
+        RolEntity rolInteresado = rolRepository.findByNombre("INTERESADO")
+                .orElseThrow(() -> new IllegalStateException("Rol INTERESADO no encontrado."));
+
+        // --- Lógica de transferencia para el RD saliente ---
+        RolEntity nuevoRolParaExRD;
+        String nombreNuevoRolExRD;
+
+        // Validamos si tiene Club asignado (Club != null)
+        if (actualRD.getClub() != null) {
+            nuevoRolParaExRD = rolSocio;
+            nombreNuevoRolExRD = "SOCIO";
+        } else {
+            nuevoRolParaExRD = rolInteresado;
+            nombreNuevoRolExRD = "INTERESADO";
+        }
+
+        // Asignar roles
+        actualRD.setRol(nuevoRolParaExRD);
         nuevo.setRol(rolRD);
 
         // Invalidar sesiones previas incrementando tokenVersion
         actualRD.setTokenVersion(actualRD.getTokenVersion() + 1);
         nuevo.setTokenVersion(nuevo.getTokenVersion() + 1);
 
+        // Guardar cambios
         usuarioRepository.save(actualRD);
         usuarioRepository.save(nuevo);
 
-        // Notificaciones WebSocket (Ahora con formato CAMBIO_ROL)
-        enviarNotificacionesWebsocket(actualRD, nuevo);
+        // Notificaciones WebSocket
+        enviarNotificacionesWebsocket(actualRD, nuevo, nombreNuevoRolExRD);
 
         // Notificaciones por correo
         enviarCorreoNuevoRepresentante(nuevo, actualRD);
-        enviarCorreoAntiguoRepresentante(actualRD, nuevo);
+        enviarCorreoAntiguoRepresentante(actualRD, nuevo, nombreNuevoRolExRD);
     }
 
     /**
      * Enviar notificaciones WebSocket al nuevo y al antiguo representante con estructura JSON.
      */
-    private void enviarNotificacionesWebsocket(UsuarioEntity anterior, UsuarioEntity nuevo) {
+    private void enviarNotificacionesWebsocket(UsuarioEntity anterior, UsuarioEntity nuevo, String nombreNuevoRolAnterior) {
 
         // 1. Notificación al NUEVO Representante (Gana permisos)
         notificacionService.enviarAUsuario(
@@ -94,12 +111,12 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
                 )
         );
 
-        // 2. Notificación al ANTIGUO Representante (Pierde permisos, vuelve a Socio)
+        // 2. Notificación al ANTIGUO Representante (Pierde permisos, cambia rol dinámicamente)
         notificacionService.enviarAUsuario(
                 anterior.getId(),
                 Map.of(
                         "titulo", "Transferencia Exitosa",
-                        "mensaje", "Has transferido la representación a " + nuevo.getNombre() + ". Tu rol ha sido actualizado a SOCIO.",
+                        "mensaje", "Has transferido la representación a " + nuevo.getNombre() + ". Tu rol ha sido actualizado a " + nombreNuevoRolAnterior + ".",
                         "tipo", "CAMBIO_ROL"
                 )
         );
@@ -141,7 +158,7 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
     /**
      * Enviar correo al representante distrital saliente.
      */
-    private void enviarCorreoAntiguoRepresentante(UsuarioEntity anterior, UsuarioEntity nuevo) {
+    private void enviarCorreoAntiguoRepresentante(UsuarioEntity anterior, UsuarioEntity nuevo, String nombreNuevoRol) {
 
         String asunto = "Transferencia de Representación Distrital realizada - Rotaract D4465";
 
@@ -150,13 +167,14 @@ public class RepresentacionDistritalService implements IRepresentacionDistritalS
             <p>Confirmamos que ha transferido la <strong>Representación Distrital</strong> a:</p>
             <p><strong>%s</strong></p>
             <br>
-            <p>Su rol ha sido actualizado nuevamente a <strong>SOCIO</strong>.</p>
+            <p>Su rol ha sido actualizado nuevamente a <strong>%s</strong>.</p>
             <p>Agradecemos su compromiso y servicio durante su gestión distrital.</p>
             <br>
             <p>Siempre será parte importante de Rotaract D4465.</p>
             """.formatted(
                 anterior.getNombre(),
-                nuevo.getNombre()
+                nuevo.getNombre(),
+                nombreNuevoRol // "SOCIO" o "INTERESADO" dinámicamente
         );
 
         emailService.enviarCorreo(
