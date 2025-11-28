@@ -45,11 +45,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 .authorizeHttpRequests(auth -> auth
-                        // WEBSOCKET PERMITIDO
-                        .requestMatchers("/ws/**", "/ws").permitAll()
-                        .requestMatchers("/topic/**").permitAll()
 
-                        // ENDPOINTS PÚBLICOS
+                        // 🔥 WEBSOCKET (NO incluir /api/v1 aquí)
+                        .requestMatchers("/ws", "/ws/**", "/ws/info", "/topic/**").permitAll()
+
+                        // 🔓 ENDPOINTS PÚBLICOS
                         .requestMatchers(
                                 "/auth/**",
                                 "/swagger-ui/**",
@@ -82,7 +82,6 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Orígenes permitidos
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost:5174",
@@ -91,6 +90,7 @@ public class SecurityConfig {
                 "https://rotaract-d4465-frontend-production.up.railway.app"
         ));
 
+        configuration.addAllowedOriginPattern("*"); // 🔥 necesario para SockJS
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
