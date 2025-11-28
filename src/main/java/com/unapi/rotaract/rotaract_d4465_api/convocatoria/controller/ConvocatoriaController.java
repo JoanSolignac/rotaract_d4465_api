@@ -95,9 +95,7 @@ public class ConvocatoriaController {
             summary = "Obtener convocatoria por ID",
             description = "Devuelve información pública de una convocatoria."
     )
-    public ResponseEntity<ConvocatoriaResponseDto> obtenerConvocatoriaPublica(
-            @PathVariable Long id
-    ) {
+    public ResponseEntity<ConvocatoriaResponseDto> obtenerConvocatoriaPublica(@PathVariable Long id) {
         return ResponseEntity.ok(convocatoriaService.findById(id));
     }
 
@@ -132,6 +130,30 @@ public class ConvocatoriaController {
             @Valid @RequestBody ConvocatoriaEditRequestDto dto
     ) {
         return ResponseEntity.ok(convocatoriaService.update(id, dto));
+    }
+
+    // =====================================================================
+    // **CANCELAR CONVOCATORIA (PRESIDENTE)**
+    // =====================================================================
+
+    @DeleteMapping("/{id}/cancelar")
+    @PreAuthorize("hasRole('PRESIDENTE')")
+    @Operation(
+            summary = "Cancelar convocatoria",
+            description = "Cancela una convocatoria solo si no tiene inscritos."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Convocatoria cancelada correctamente"),
+            @ApiResponse(responseCode = "400", description = "Regla de negocio incumplida",
+                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class))),
+            @ApiResponse(responseCode = "401", description = "No autenticado",
+                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class))),
+            @ApiResponse(responseCode = "403", description = "No autorizado",
+                    content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
+    })
+    public ResponseEntity<String> cancelarConvocatoria(@PathVariable Long id) {
+        convocatoriaService.cancelarConvocatoria(id);
+        return ResponseEntity.ok("Convocatoria cancelada correctamente.");
     }
 
     // =====================================================================
@@ -178,9 +200,7 @@ public class ConvocatoriaController {
     @PostMapping("/{convocatoriaId}/inscripciones/{inscripcionId}/aceptar")
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(summary = "Aceptar inscripción")
-    public ResponseEntity<String> aceptarInscripcion(
-            @PathVariable Long inscripcionId
-    ) {
+    public ResponseEntity<String> aceptarInscripcion(@PathVariable Long inscripcionId) {
         inscripcionService.aceptarInscripcion(inscripcionId);
         return ResponseEntity.ok("Inscripción aceptada correctamente.");
     }
@@ -192,9 +212,7 @@ public class ConvocatoriaController {
     @PostMapping("/{convocatoriaId}/inscripciones/{inscripcionId}/rechazar")
     @PreAuthorize("hasRole('PRESIDENTE')")
     @Operation(summary = "Rechazar inscripción")
-    public ResponseEntity<String> rechazarInscripcion(
-            @PathVariable Long inscripcionId
-    ) {
+    public ResponseEntity<String> rechazarInscripcion(@PathVariable Long inscripcionId) {
         inscripcionService.rechazarInscripcion(inscripcionId);
         return ResponseEntity.ok("Inscripción rechazada correctamente.");
     }
@@ -216,9 +234,7 @@ public class ConvocatoriaController {
             @ApiResponse(responseCode = "401", description = "No autenticado",
                     content = @Content(schema = @Schema(implementation = ExceptionResponseDto.class)))
     })
-    public ResponseEntity<?> cancelarInscripcionConvocatoria(
-            @PathVariable Long convocatoriaId
-    ) {
+    public ResponseEntity<?> cancelarInscripcionConvocatoria(@PathVariable Long convocatoriaId) {
         inscripcionService.cancelarInscripcionConvocatoria(convocatoriaId);
         return ResponseEntity.ok("Inscripción cancelada correctamente.");
     }
@@ -226,6 +242,6 @@ public class ConvocatoriaController {
     // =====================================================================
     // LISTAR MIS INSCRIPCIONES
     // =====================================================================
+    // (Este endpoint está ahora en InscripcionController)
 
-    // Este endpoint se ha movido a `InscripcionController` para mantener la separación de responsabilidades.
 }

@@ -38,7 +38,7 @@ public interface IConvocatoriaService {
     /**
      * Obtiene una página de convocatorias disponibles para un usuario con rol INTERESADO.
      * Se excluyen aquellas donde el usuario ya esté inscrito en estado PENDIENTE o ACEPTADA.
-     * Solo se incluyen las convocatorias:
+     * Solo se incluyen convocatorias:
      * - Activas
      * - Dentro del periodo de postulación
      *
@@ -74,4 +74,15 @@ public interface IConvocatoriaService {
      * @return representación actualizada como {@link ConvocatoriaResponseDto}
      */
     ConvocatoriaResponseDto update(Long id, ConvocatoriaEditRequestDto dto);
+
+    /**
+     * Cancela una convocatoria solo si no tiene inscripciones registradas.
+     * Debe:
+     * - Cambiar el estado a CANCELADO.
+     * - Notificar por correo al presidente del club.
+     * - Emitir la notificación correspondiente via WebSocket.
+     *
+     * @param id identificador de la convocatoria a cancelar
+     */
+    void cancelarConvocatoria(Long id);
 }
