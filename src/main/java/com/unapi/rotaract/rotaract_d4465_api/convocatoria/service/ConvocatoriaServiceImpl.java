@@ -3,6 +3,8 @@ package com.unapi.rotaract.rotaract_d4465_api.convocatoria.service;
 import com.unapi.rotaract.rotaract_d4465_api.auth.entity.UsuarioEntity;
 import com.unapi.rotaract.rotaract_d4465_api.auth.repository.UsuarioRepository;
 import com.unapi.rotaract.rotaract_d4465_api.club.entity.ClubEntity;
+import com.unapi.rotaract.rotaract_d4465_api.common.email.interfaces.IEmailService;
+import com.unapi.rotaract.rotaract_d4465_api.common.services.NotificacionService;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos.ConvocatoriaCreateRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos.ConvocatoriaEditRequestDto;
 import com.unapi.rotaract.rotaract_d4465_api.convocatoria.dtos.ConvocatoriaResponseDto;
@@ -35,6 +37,8 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
     private final ConvocatoriaRepository convocatoriaRepository;
     private final UsuarioRepository usuarioRepository;
     private final InscripcionRepository inscripcionRepository;
+    private final IEmailService emailService;
+    private final NotificacionService notificacionService;
 
     // ============================================================
     // LISTADO GENERAL
@@ -85,7 +89,6 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
         Long userId = usuario.getId();
         LocalDate hoy = LocalDate.now();
 
-        // 1. Obtener convocatorias ACTIVAS y en fecha de postulación
         List<ConvocatoriaEntity> activas = convocatoriaRepository
                 .findByEstado(EventoEntity.EstadoEvento.ACTIVO)
                 .stream()
@@ -93,7 +96,6 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                         !hoy.isAfter(c.getFechaFinPostulacion()))
                 .toList();
 
-        // 2. Obtener IDs de convocatorias donde el usuario YA está inscrito
         List<Long> idsInscritos = inscripcionRepository
                 .findByUsuarioId(userId)
                 .stream()
@@ -105,13 +107,11 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                 .map(i -> i.getConvocatoria().getId())
                 .toList();
 
-        // 3. Filtrar convocatorias donde NO esté inscrito
         List<ConvocatoriaResponseDto> disponibles = activas.stream()
                 .filter(c -> !idsInscritos.contains(c.getId()))
                 .map(this::mapToResponse)
                 .toList();
 
-        // 4. Paginación manual
         int start = page * size;
         int end = Math.min(start + size, disponibles.size());
 
@@ -143,7 +143,7 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
     }
 
     // ============================================================
-    // CREAR
+    // CREAR — CON NOTIFICACIONES COMPLETAS
     // ============================================================
 
     @Override
@@ -176,7 +176,96 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
                 .estado(EventoEntity.EstadoEvento.ACTIVO)
                 .build();
 
-        return mapToResponse(convocatoriaRepository.save(entity));
+        ConvocatoriaEntity saved = convocatoriaRepository.save(entity);
+
+        // ============================================================
+        // ENVÍO DE CORREOS
+        // ============================================================
+
+        // 1) CORREO AL PRESIDENTE (buscado correctamente)
+        UsuarioEntity presidente = usuarioRepository
+                .findFirstByClubIdAndRol_NombreAndActivoTrue(club.getId(), "PRESIDENTE")
+                .orElse(null);
+
+        if (presidente != null) {
+
+            emailService.enviarCorreo(
+                    presidente.getCorreo(),
+                    "Nueva convocatoria creada",
+                    """
+                    <h2>Convocatoria publicada</h2>
+                    <p>Se ha creado la convocatoria <strong>%s</strong>.</p>
+                    """.formatted(saved.getTitulo())
+            );
+
+            notificacionService.enviarAUsuario(
+                    presidente.getId(),
+                    "Nueva convocatoria creada: " + saved.getTitulo()
+            );
+        }
+
+        // 2) CORREO A INTERESADOS
+        List<UsuarioEntity> interesados = usuarioRepository.findAll().stream()
+                .filter(u -> "INTERESADO".equals(u.getRol().getNombre()))
+                .toList();
+
+        for (UsuarioEntity inter : interesados) {
+            emailService.enviarCorreo(
+                    inter.getCorreo(),
+                    "Nueva convocatoria disponible",
+                    """
+                    <h2>Convocatoria disponible</h2>
+                    <p>Mira la nueva convocatoria <strong>%s</strong> y postula ahora.</p>
+                    """.formatted(saved.getTitulo())
+            );
+        }
+
+        // 3) NOTIFICACIÓN GENERAL
+        notificacionService.enviarAGeneral(
+                "Nueva convocatoria disponible: " + saved.getTitulo()
+        );
+
+        return mapToResponse(saved);
+    }
+
+    // ============================================================
+    // CANCELAR CONVOCATORIA — SOLO SI NO TIENE INSCRITOS
+    // ============================================================
+
+    @Transactional
+    public void cancelarConvocatoria(Long id) {
+
+        ConvocatoriaEntity c = convocatoriaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Convocatoria no encontrada."));
+
+        if (c.getInscritos() > 0) {
+            throw new IllegalStateException("No se puede cancelar una convocatoria con inscritos.");
+        }
+
+        c.setEstado(EventoEntity.EstadoEvento.CANCELADO);
+        convocatoriaRepository.save(c);
+
+        // Buscar presidente correctamente
+        UsuarioEntity presidente = usuarioRepository
+                .findFirstByClubIdAndRol_NombreAndActivoTrue(c.getClub().getId(), "PRESIDENTE")
+                .orElse(null);
+
+        if (presidente != null) {
+
+            emailService.enviarCorreo(
+                    presidente.getCorreo(),
+                    "Convocatoria cancelada",
+                    """
+                    <h2>Convocatoria cancelada</h2>
+                    <p>La convocatoria <strong>%s</strong> fue cancelada porque no registró inscripciones.</p>
+                    """.formatted(c.getTitulo())
+            );
+
+            notificacionService.enviarAUsuario(
+                    presidente.getId(),
+                    "Convocatoria cancelada: " + c.getTitulo()
+            );
+        }
     }
 
     // ============================================================
@@ -219,11 +308,11 @@ public class ConvocatoriaServiceImpl implements IConvocatoriaService {
     private void validarFechasCreacion(ConvocatoriaCreateRequestDto dto) {
 
         if (dto.fechaFinPostulacion().isBefore(dto.fechaInicioPostulacion())) {
-            throw new IllegalArgumentException("La fecha fin de postulación no puede ser anterior a la fecha de inicio.");
+            throw new IllegalArgumentException("La fecha fin no puede ser anterior a la fecha de inicio.");
         }
 
         if (dto.fechaFinPostulacion().isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("La convocatoria no puede finalizar en el pasado.");
+            throw new IllegalArgumentException("La convocatoria no puede cerrar en el pasado.");
         }
     }
 
