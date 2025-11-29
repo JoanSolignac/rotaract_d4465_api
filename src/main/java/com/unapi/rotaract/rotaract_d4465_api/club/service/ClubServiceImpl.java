@@ -13,6 +13,13 @@ import com.unapi.rotaract.rotaract_d4465_api.club.repository.ClubRepository;
 import com.unapi.rotaract.rotaract_d4465_api.common.email.interfaces.IEmailService;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.entity.InscripcionEntity;
 import com.unapi.rotaract.rotaract_d4465_api.inscripcion.repository.InscripcionRepository;
+import com.unapi.rotaract.rotaract_d4465_api.convocatoria.entity.ConvocatoriaEntity;
+import com.unapi.rotaract.rotaract_d4465_api.convocatoria.repository.ConvocatoriaRepository;
+import com.unapi.rotaract.rotaract_d4465_api.proyecto.entity.ProyectoEntity;
+import com.unapi.rotaract.rotaract_d4465_api.proyecto.repository.ProyectoRepository;
+import com.unapi.rotaract.rotaract_d4465_api.asistencia.repository.AsistenciaRepository;
+import com.unapi.rotaract.rotaract_d4465_api.asistencia.entity.AsistenciaEntity;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,12 +44,18 @@ public class ClubServiceImpl implements IClubService {
     private final ClubRepository clubRepository;
     private final UsuarioRepository usuarioRepository;
     private final InscripcionRepository inscripcionRepository;
+
+    // Repositorios requeridos para la eliminación en cascada manual
+    private final ConvocatoriaRepository convocatoriaRepository;
+    private final ProyectoRepository proyectoRepository;
+    private final AsistenciaRepository asistenciaRepository;
+
     private final IEmailService emailService;
     private final com.unapi.rotaract.rotaract_d4465_api.common.services.NotificacionService notificacionService;
 
-    // ... (Métodos de búsqueda findAll, findById, createClub y updateClub se mantienen igual) ...
-    // Para ahorrar espacio en la respuesta, omito los métodos de lectura/creación básica que no envían notificaciones
-    // y me centro en los que cambiamos la lógica de notificación.
+    // =========================================================================
+    //  MÉTODOS DE LECTURA Y CREACIÓN BÁSICA
+    // =========================================================================
 
     @Override
     public Page<ClubResponseDto> findAll(int page, int size) {
@@ -99,11 +112,17 @@ public class ClubServiceImpl implements IClubService {
     }
 
     // =========================================================================
-    //  MÉTODOS CON LÓGICA DE NOTIFICACIÓN ESTANDARIZADA
+    //  MÉTODOS CON LÓGICA DE NEGOCIO COMPLEJA
     // =========================================================================
 
     /**
-     * Desactiva (marca como inactivo) el club identificado por {@code id}.
+     * Desactiva el club y elimina FÍSICAMENTE sus dependencias para mantener la integridad:
+     * 1. Asistencias (vía Proyectos)
+     * 2. Inscripciones (de Proyectos y Convocatorias)
+     * 3. Proyectos
+     * 4. Convocatorias
+     *
+     * * Solo MANTIENE a los usuarios, cambiándoles el rol a INTERESADO y desvinculándolos.
      */
     @Override
     @Transactional
@@ -115,11 +134,57 @@ public class ClubServiceImpl implements IClubService {
                 () -> new IllegalArgumentException("Club con id " + id + " no encontrado.")
         );
 
-        // 1. Desactivar club
+        // 1. Desactivar club (Soft Delete del club en sí mismo)
         clubEntity.setActivo(false);
         ClubEntity updatedClub = clubRepository.save(clubEntity);
 
-        // 2. Obtener todos los usuarios del club
+        // ---------------------------------------------------------------------
+        // FASE 1: LIMPIEZA DE PROYECTOS (ASISTENCIAS E INSCRIPCIONES)
+        // ---------------------------------------------------------------------
+        // Recuperamos proyectos para limpiar sus dependencias, ya que Asistencia no tiene findByClubId
+        List<ProyectoEntity> proyectos = proyectoRepository.findByClubId(id);
+
+        for (ProyectoEntity proy : proyectos) {
+            // A. Eliminar Asistencias del proyecto
+            List<AsistenciaEntity> asistencias = asistenciaRepository.findByProyectoId(proy.getId());
+            if (!asistencias.isEmpty()) {
+                asistenciaRepository.deleteAll(asistencias);
+            }
+
+            // B. Eliminar Inscripciones del proyecto (usando método List del repo)
+            List<InscripcionEntity> inscripcionesProy = inscripcionRepository.findByProyectoId(proy.getId());
+            if (!inscripcionesProy.isEmpty()) {
+                inscripcionRepository.deleteAll(inscripcionesProy);
+            }
+
+            // C. Eliminar el Proyecto
+            proyectoRepository.delete(proy);
+        }
+
+        // ---------------------------------------------------------------------
+        // FASE 2: LIMPIEZA DE CONVOCATORIAS E INSCRIPCIONES
+        // ---------------------------------------------------------------------
+        List<ConvocatoriaEntity> convocatorias = convocatoriaRepository.findByClubId(id);
+
+        for (ConvocatoriaEntity conv : convocatorias) {
+            // A. Eliminar Inscripciones de la convocatoria.
+            // Nota: El repo solo tiene findByConvocatoriaId devolviendo Page, usamos un PageRequest grande.
+            Page<InscripcionEntity> paginaInscripciones = inscripcionRepository.findByConvocatoriaId(
+                    conv.getId(),
+                    PageRequest.of(0, Integer.MAX_VALUE)
+            );
+
+            if (paginaInscripciones.hasContent()) {
+                inscripcionRepository.deleteAll(paginaInscripciones.getContent());
+            }
+
+            // B. Eliminar la Convocatoria
+            convocatoriaRepository.delete(conv);
+        }
+
+        // ---------------------------------------------------------------------
+        // FASE 3: GESTIÓN DE USUARIOS (CAMBIO DE ROL Y DESVINCULACIÓN)
+        // ---------------------------------------------------------------------
         List<UsuarioEntity> usuariosClub = usuarioRepository.findByClubId(updatedClub.getId());
 
         if (!usuariosClub.isEmpty()) {
@@ -127,30 +192,13 @@ public class ClubServiceImpl implements IClubService {
                     .orElseThrow(() -> new IllegalStateException("Rol INTERESADO no encontrado."));
 
             for (UsuarioEntity usuario : usuariosClub) {
-                // Cancelar inscripciones activas
-                List<InscripcionEntity> inscripciones = inscripcionRepository
-                        .findByUsuarioId(usuario.getId())
-                        .stream()
-                        .filter(i -> i.getConvocatoria() != null)
-                        .filter(i -> i.getEstado() == InscripcionEntity.EstadoInscripcion.ACEPTADA
-                                || i.getEstado() == InscripcionEntity.EstadoInscripcion.PENDIENTE)
-                        .toList();
-
-                for (InscripcionEntity ins : inscripciones) {
-                    ins.setEstado(InscripcionEntity.EstadoInscripcion.CANCELADA);
-                    var conv = ins.getConvocatoria();
-                    if (conv != null) conv.setInscritos(conv.getInscritos() - 1);
-                }
-                inscripcionRepository.saveAll(inscripciones);
-
-                // Cambiar rol a INTERESADO
                 usuario.setRol(rolInteresado);
                 usuario.setClub(null);
                 incrementarTokenVersion(usuario);
                 usuarioRepository.save(usuario);
             }
 
-            // Notificar estandarizado
+            // Notificar cambios masivos
             notificarDesactivacionClub(updatedClub, usuariosClub);
         }
 
@@ -179,13 +227,13 @@ public class ClubServiceImpl implements IClubService {
         incrementarTokenVersion(presidente);
         usuarioRepository.save(presidente);
 
-        // NOTIFICACIÓN WEBSOCKET AL NUEVO PRESIDENTE
+        // NOTIFICACIÓN WEBSOCKET
         notificacionService.enviarAUsuario(
                 presidente.getId(),
                 Map.of(
                         "titulo", "¡Nuevo Club Creado!",
                         "mensaje", "Has sido asignado como Presidente del nuevo club " + newClub.getNombre() + ".",
-                        "tipo", "CAMBIO_ROL", // Importante para que el frontend actualice permisos
+                        "tipo", "CAMBIO_ROL",
                         "extraId", newClub.getId().toString()
                 )
         );
@@ -216,10 +264,12 @@ public class ClubServiceImpl implements IClubService {
         if ("PRESIDENTE".equals(socio.getRol().getNombre()))
             throw new IllegalArgumentException("No puedes eliminar al presidente del club.");
 
-        // Cancelar inscripciones
+        // Cancelar inscripciones activas (PENDIENTE/ACEPTADA) y eliminar para limpieza
         List<InscripcionEntity> inscripciones = inscripcionRepository.findByUsuarioId(socio.getId()).stream()
                 .filter(i -> i.getConvocatoria() != null && (i.getEstado() == InscripcionEntity.EstadoInscripcion.ACEPTADA || i.getEstado() == InscripcionEntity.EstadoInscripcion.PENDIENTE))
                 .toList();
+
+        // Aquí solo cancelamos porque el socio se va, pero la convocatoria sigue existiendo para otros
         for (InscripcionEntity ins : inscripciones) {
             ins.setEstado(InscripcionEntity.EstadoInscripcion.CANCELADA);
             var conv = ins.getConvocatoria();
@@ -277,82 +327,36 @@ public class ClubServiceImpl implements IClubService {
     }
 
     // ============================================================
-    // MÉTODOS DE NOTIFICACIÓN ACTUALIZADOS (USAN MAP Y TIPO)
+    // MÉTODOS DE NOTIFICACIÓN
     // ============================================================
 
     private void notificarDesactivacionClub(ClubEntity club, List<UsuarioEntity> usuariosClub) {
         String asunto = "Club desactivado - Rotaract D4465";
         for (UsuarioEntity usuario : usuariosClub) {
-            String mensajeCorreo = """
-                    <h2>Notificación de desactivación de club</h2>
-                    <p>El club <strong>%s</strong> ha sido desactivado.</p>
-                    <p>Su rol ha sido actualizado a <strong>INTERESADO</strong>.</p>
-                    """.formatted(club.getNombre());
+            emailService.enviarCorreo(usuario.getCorreo(), asunto,
+                    "<h2>Notificación de desactivación</h2><p>El club <strong>" + club.getNombre() +
+                            "</strong> ha sido desactivado. Su rol ahora es INTERESADO.</p>");
 
-            emailService.enviarCorreo(usuario.getCorreo(), asunto, mensajeCorreo);
-
-            // WebSocket Estandarizado
             notificacionService.enviarAUsuario(
                     usuario.getId(),
-                    Map.of(
-                            "titulo", "Club desactivado",
-                            "mensaje", "El club " + club.getNombre() + " ha sido desactivado. Ahora eres INTERESADO.",
-                            "tipo", "CAMBIO_ROL" // IMPORTANTE
-                    )
+                    Map.of("titulo", "Club desactivado", "mensaje", "El club " + club.getNombre() + " ha sido desactivado.", "tipo", "CAMBIO_ROL")
             );
         }
     }
 
     private void notificarRemocionSocio(UsuarioEntity socio, ClubEntity club, UsuarioEntity presidente) {
-        String asunto = "Ha sido removido del club - Rotaract D4465";
-        String html = """
-                <h2>Remoción de club</h2>
-                <p>Ha sido removido del club <strong>%s</strong> por %s.</p>
-                <p>Su rol ha sido actualizado a <strong>INTERESADO</strong>.</p>
-                """.formatted(club.getNombre(), presidente.getNombre());
-
-        emailService.enviarCorreo(socio.getCorreo(), asunto, html);
-
-        // WebSocket Estandarizado
+        emailService.enviarCorreo(socio.getCorreo(), "Remoción de club - Rotaract D4465",
+                "Ha sido removido del club " + club.getNombre() + " por " + presidente.getNombre());
         notificacionService.enviarAUsuario(
                 socio.getId(),
-                Map.of(
-                        "titulo", "Remoción de club",
-                        "mensaje", "Has sido removido del club " + club.getNombre() + ". Tu rol ahora es INTERESADO.",
-                        "tipo", "CAMBIO_ROL", // IMPORTANTE
-                        "extraId", club.getId().toString()
-                )
+                Map.of("titulo", "Remoción de club", "mensaje", "Has sido removido del club. Tu rol ahora es INTERESADO.", "tipo", "CAMBIO_ROL", "extraId", club.getId().toString())
         );
     }
 
     private void notificarTransferenciaPresidencia(UsuarioEntity anterior, UsuarioEntity nuevo, ClubEntity club) {
-        // Correo nuevo presidente
-        emailService.enviarCorreo(nuevo.getCorreo(), "Designado Presidente - Rotaract D4465",
-                "Ha sido designado como Presidente del club " + club.getNombre());
-        // Correo expresidente
-        emailService.enviarCorreo(anterior.getCorreo(), "Transferencia confirmada - Rotaract D4465",
-                "Ha transferido la presidencia del club " + club.getNombre());
-
-        // WebSocket Nuevo Presidente
-        notificacionService.enviarAUsuario(
-                nuevo.getId(),
-                Map.of(
-                        "titulo", "Nueva presidencia asignada",
-                        "mensaje", "Ahora eres presidente del club " + club.getNombre() + ".",
-                        "tipo", "CAMBIO_ROL",
-                        "extraId", club.getId().toString()
-                )
-        );
-
-        // WebSocket Anterior Presidente
-        notificacionService.enviarAUsuario(
-                anterior.getId(),
-                Map.of(
-                        "titulo", "Presidencia transferida",
-                        "mensaje", "Has transferido la presidencia a " + nuevo.getNombre() + ". Ahora eres SOCIO.",
-                        "tipo", "CAMBIO_ROL",
-                        "extraId", club.getId().toString()
-                )
-        );
+        emailService.enviarCorreo(nuevo.getCorreo(), "Designado Presidente", "Es el nuevo presidente de " + club.getNombre());
+        emailService.enviarCorreo(anterior.getCorreo(), "Transferencia confirmada", "Ha transferido la presidencia de " + club.getNombre());
+        notificacionService.enviarAUsuario(nuevo.getId(), Map.of("titulo", "Nueva presidencia", "mensaje", "Eres presidente de " + club.getNombre(), "tipo", "CAMBIO_ROL", "extraId", club.getId().toString()));
+        notificacionService.enviarAUsuario(anterior.getId(), Map.of("titulo", "Presidencia transferida", "mensaje", "Transferiste la presidencia a " + nuevo.getNombre(), "tipo", "CAMBIO_ROL", "extraId", club.getId().toString()));
     }
 }
